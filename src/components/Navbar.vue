@@ -48,7 +48,7 @@
             <span class="font-weight-black subtitle-1 text-sm-h6">
               {{ store.state.cData.company_name }}
             </span>
-            <span class="subtitle-1 ml-2 d-none d-sm-flex" style="opacity: 0.9;">
+            <span class="text-caption ml-2 align-self-end font-weight-bold" style="opacity: 0.9;">
               v.{{ store.state.verMsg }}
             </span>
           </div>
