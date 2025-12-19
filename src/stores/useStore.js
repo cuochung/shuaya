@@ -19,21 +19,36 @@ export const useStore = defineStore('company', () => {
 
     //功能名稱,樣式,key值,引用圖片,授權,icon圖片設定,
     authKeys: [
+      // 排班系統選單
       {
-        label: "客戶管理", class: "ma-1 white--text", color: "primary", keyName: 'customer',
-        image: new URL('@/assets/img/kankou_shopping_asia.png', import.meta.url).href,
-        route: "/main/Customer",
-        authKey: "customer_key",
-        icon: 'mdi-account',
+        label: "機台管理", class: "ma-1 white--text", color: "blue-grey", keyName: 'machine',
+        image: new URL('@/assets/img/building_insatsujo.png', import.meta.url).href,
+        route: "/main/Machine",
+        authKey: "machine_key",
+        icon: 'mdi-factory',
       },
       {
-        label: "訂單管理", class: "ma-1 white--text", color: "primary", keyName: 'order',
-        image: new URL('@/assets/img/shopping_order_youshi.png', import.meta.url).href,
-        route: "/main/Order",
-        authKey: "order_key",
-        icon: 'mdi-account',
+        label: "操作人員管理", class: "ma-1 white--text", color: "teal", keyName: 'operator',
+        image: new URL('@/assets/img/job_one_operation_woman.png', import.meta.url).href,
+        route: "/main/Operator",
+        authKey: "operator_key",
+        icon: 'mdi-account-hard-hat',
       },
-      
+      {
+        label: "品號資料庫", class: "ma-1 white--text", color: "cyan", keyName: 'productcode',
+        image: new URL('@/assets/img/document_meisaisyo.png', import.meta.url).href,
+        route: "/main/ProductCode",
+        authKey: "productcode_key",
+        icon: 'mdi-barcode',
+      },
+      {
+        label: "排班管理", class: "ma-1 white--text", color: "indigo", keyName: 'scheduling',
+        image: new URL('@/assets/img/template_calender_j.jpg', import.meta.url).href,
+        route: "/main/Scheduling",
+        authKey: "scheduling_key",
+        icon: 'mdi-calendar-clock',
+      },
+
       {
         label: "人員管理", class: "ma-1 white--text", color: "purple", keyName: 'personnel',
         image: new URL('@/assets/img/benkyoukai_kunrenkou_asia.png', import.meta.url).href,
@@ -42,14 +57,6 @@ export const useStore = defineStore('company', () => {
         icon: 'mdi-account',
       },
       {
-        label: "會員儲值", class: "ma-1 white--text", color: "success", keyName: 'wallet',
-        image: new URL('@/assets/img/saifu_gamaguchi.png', import.meta.url).href,
-        route: "/main/Wallet",
-        authKey: "wallet_key",
-        icon: 'mdi-wallet',
-      },
-
-      {
         label: "登出", class: "ma-1 white--text", color: "dark", keyName: 'exit',
         image: new URL('@/assets/img/text_exit.png', import.meta.url).href,
         route: "/login",
@@ -57,6 +64,12 @@ export const useStore = defineStore('company', () => {
         icon: 'mdi-logout',
       },
     ],
+    
+    // 排班系統狀態
+    scheduleData: null,
+    selectedDate: null,
+    selectedShift: '早',
+    viewMode: 'table',
   }
 
   //全域toast multi功能;基本上只把要toast的暫存在pinia裡,其他都由PDDToastMultiV2Pinia去控制顯示結果,
