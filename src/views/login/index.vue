@@ -77,7 +77,7 @@
               </div>
               <div class="d-flex align-center">
                 <v-icon small class="mr-1" style="color: var(--daycare-secondary);">mdi-copyright</v-icon>
-                <span>© 2025.11.14 All Rights Reserved</span>
+                <span>© 2025.12.16 All Rights Reserved</span>
               </div>
             </div>
           </div>

@@ -87,6 +87,8 @@ graph TB
     display --> data
 ```
 
+
+
 ## 实施任务
 
 ### 1. 数据管理模块
@@ -94,84 +96,84 @@ graph TB
 #### 1.1 机台管理 (`src/views/main/Machine/`)
 
 - **index.vue**: 机台列表页面
-  - 显示46个机台
-  - 支持新增、编辑、删除
-  - 字段：机台名称、周边机台（多选）、执行品号（多选，有序）、生产优先（六种等级）
+- 显示46个机台
+- 支持新增、编辑、删除
+- 字段：机台名称、周边机台（多选）、执行品号（多选，有序）、生产优先（六种等级）
 - **Add.vue**: 机台新增/编辑弹窗
-  - 表单字段验证
-  - 周边机台多选下拉
-  - 品号多选（支持排序）
-  - 生产优先选择器（方塊/大圈/小圈/大三角/小三角/空白）
+- 表单字段验证
+- 周边机台多选下拉
+- 品号多选（支持排序）
+- 生产优先选择器（方塊/大圈/小圈/大三角/小三角/空白）
 
 #### 1.2 操作人员管理 (`src/views/main/Operator/`)
 
 - **index.vue**: 操作人员列表页面
-  - 显示所有操作人员
-  - 支持新增、编辑、删除
-  - 字段：人员名称、可上班时段（多选：早/中上/中下/晚）、性别、不合对象（多选snkey）、对应品号（技术能力，多选）、状态
+- 显示所有操作人员
+- 支持新增、编辑、删除
+- 字段：人员名称、可上班时段（多选：早/中上/中下/晚）、性别、不合对象（多选snkey）、对应品号（技术能力，多选）、状态
 - **Add.vue**: 操作人员新增/编辑弹窗
-  - 时段多选
-  - 不合对象关联选择（显示人员列表）
-  - 品号技术能力多选
+- 时段多选
+- 不合对象关联选择（显示人员列表）
+- 品号技术能力多选
 
 #### 1.3 品号资料库 (`src/views/main/ProductCode/`)
 
 - **index.vue**: 品号列表页面
-  - 显示品号与人力代码对应关系
-  - 支持Excel导入
-  - 字段：品号、人力代码（可能多个）
+- 显示品号与人力代码对应关系
+- 支持Excel导入
+- 字段：品号、人力代码（可能多个）
 - **importProductCode.vue**: Excel导入组件
-  - 参考 `importCustomer.vue` 的实现
-  - 解析Excel：品号列、人力代码列
-  - 支持多个人力代码（用分隔符或多列）
+- 参考 `importCustomer.vue` 的实现
+- 解析Excel：品号列、人力代码列
+- 支持多个人力代码（用分隔符或多列）
 
 ### 2. 排班算法模块
 
 #### 2.1 排班核心服务 (`src/services/schedulingService.js`)
 
 - **generateSchedule(date, shift)**: 生成指定日期和时段的排班
-  - 输入：日期、时段（早/中上/中下/晚）
-  - 输出：排班结果数组
+- 输入：日期、时段（早/中上/中下/晚）
+- 输出：排班结果数组
 - **核心逻辑**：
 
-  1. 获取所有机台（按生产优先级排序）
-  2. 获取可用操作人员（过滤状态、时段）
-  3. 对每个机台：
+1. 获取所有机台（按生产优先级排序）
+2. 获取可用操作人员（过滤状态、时段）
+3. 对每个机台：
 
-     - 通过品号获取人力代码
-     - 根据人力代码确定需要人数
-     - 匹配操作人员（考虑技术能力、不合对象、周边机台）
-     - 分配人员到机台
+    - 通过品号获取人力代码
+    - 根据人力代码确定需要人数
+    - 匹配操作人员（考虑技术能力、不合对象、周边机台）
+    - 分配人员到机台
 - **约束检查**：
-  - 不合对象检查（通过周边机台判断）
-  - 技术能力匹配（对应品号优先）
-  - 时段可用性
-  - 状态检查（只使用"上班"状态）
+- 不合对象检查（通过周边机台判断）
+- 技术能力匹配（对应品号优先）
+- 时段可用性
+- 状态检查（只使用"上班"状态）
 
 #### 2.2 人力代码解析器 (`src/utils/laborCodeParser.js`)
 
 - **parseLaborCode(code)**: 解析人力代码
-  - `手1` → { type: 'manual', count: 1, machines: 1 }
-  - `手2` → { type: 'manual', count: 2, machines: 1 }
-  - `手3` → { type: 'manual', count: 3, machines: 1 }
-  - `自12` → { type: 'semi-auto', count: 2, machines: 3 }
-  - `自01` → { type: 'semi-auto', count: 1, machines: 1 }
-  - `自` → { type: 'auto', count: 0, machines: 1 }
+- `手1` → { type: 'manual', count: 1, machines: 1 }
+- `手2` → { type: 'manual', count: 2, machines: 1 }
+- `手3` → { type: 'manual', count: 3, machines: 1 }
+- `自12` → { type: 'semi-auto', count: 2, machines: 3 }
+- `自01` → { type: 'semi-auto', count: 1, machines: 1 }
+- `自` → { type: 'auto', count: 0, machines: 1 }
 
 #### 2.3 优先级排序器 (`src/utils/prioritySorter.js`)
 
 - **sortByPriority(machines)**: 按生产优先级排序
-  - 优先级：方塊(1) > 大圈(2) > 小圈(3) > 大三角(4) > 小三角(5) > 空白(6)
+- 优先级：方塊(1) > 大圈(2) > 小圈(3) > 大三角(4) > 小三角(5) > 空白(6)
 
 ### 3. 排班显示模块
 
 #### 3.1 排班主页面 (`src/views/main/Scheduling/`)
 
 - **index.vue**: 排班主页面
-  - 日期选择器
-  - 视图切换（全资讯列表 / 列表式显示）
-  - 自动排班按钮
-  - 保存/导出功能
+- 日期选择器
+- 视图切换（全资讯列表 / 列表式显示）
+- 自动排班按钮
+- 保存/导出功能
 
 #### 3.2 全资讯列表视图 (`src/views/main/Scheduling/TableView.vue`)
 
@@ -187,16 +189,16 @@ graph TB
 - 显示：机台名称、品号、生产优先、分配人员
 - 支持拖拽移动/复制区块内容
 - 颜色区分：
-  - 早班：浅蓝色
-  - 中班：浅黄色
-  - 晚班：浅紫色
+- 早班：浅蓝色
+- 中班：浅黄色
+- 晚班：浅紫色
 
 #### 3.4 拖拽功能组件 (`src/components/Scheduling/`)
 
 - **DraggableBlock.vue**: 可拖拽的区块组件
-  - 使用 HTML5 Drag and Drop API 或 vue-draggable
-  - 支持移动和复制
-  - 拖拽时显示预览
+- 使用 HTML5 Drag and Drop API 或 vue-draggable
+- 支持移动和复制
+- 拖拽时显示预览
 
 #### 3.5 快速编辑组件 (`src/components/Scheduling/QuickEdit.vue`)
 
@@ -212,30 +214,36 @@ graph TB
 
 - **新增資料時**：
   ```javascript
-  const postData = {
-    datalist: JSON.stringify(list.value)
-  }
-  await api.add(database, postData)
+      const postData = {
+        datalist: JSON.stringify(list.value)
+      }
+      await api.add(database, postData)
   ```
+
+
+
 
 - **編輯資料時**：
   ```javascript
-  const postData = {
-    snkey: list.value.snkey,
-    datalist: JSON.stringify(list.value),
-    updateTime: dayjs().format("YYYY-MM-DD HH:mm:ss")
-  }
-  await api.post(database, postData)
+      const postData = {
+        snkey: list.value.snkey,
+        datalist: JSON.stringify(list.value),
+        updateTime: dayjs().format("YYYY-MM-DD HH:mm:ss")
+      }
+      await api.post(database, postData)
   ```
+
+
+
 
 - **刪除資料時**：
   ```javascript
-  const postData = {
-    snkey: item.snkey,
-    tablename: database,
-    datalist: JSON.stringify(item)
-  }
-  await api.delete(database, postData)
+      const postData = {
+        snkey: item.snkey,
+        tablename: database,
+        datalist: JSON.stringify(item)
+      }
+      await api.delete(database, postData)
   ```
 
 
@@ -292,6 +300,8 @@ ScheduleResult {
 }
 ```
 
+
+
 #### 4.2 API接口调用（基于现有api.js）
 
 - `api.get('machine')` - 获取所有机台
@@ -316,6 +326,8 @@ ScheduleResult {
 { path: 'Scheduling', name: 'Scheduling', component: () => import('@/views/main/Scheduling/index.vue') },
 ```
 
+
+
 ### 6. Store状态管理
 
 在 `src/stores/useStore.js` 中添加排班相关状态：
@@ -338,27 +350,27 @@ ScheduleResult {
 
 1. **第一阶段：数据管理基础**
 
-   - 实现机台管理（CRUD）
-   - 实现操作人员管理（CRUD）
-   - 实现品号资料库（列表+Excel导入）
+- 实现机台管理（CRUD）
+- 实现操作人员管理（CRUD）
+- 实现品号资料库（列表+Excel导入）
 
 2. **第二阶段：排班算法**
 
-   - 实现人力代码解析器
-   - 实现优先级排序器
-   - 实现排班核心服务（自动排班逻辑）
+- 实现人力代码解析器
+- 实现优先级排序器
+- 实现排班核心服务（自动排班逻辑）
 
 3. **第三阶段：显示功能**
 
-   - 实现全资讯列表视图
-   - 实现列表式显示视图
-   - 实现拖拽功能
+- 实现全资讯列表视图
+- 实现列表式显示视图
+- 实现拖拽功能
 
 4. **第四阶段：交互优化**
 
-   - 实现快速编辑功能
-   - 实现手动调整功能
-   - 优化用户体验
+- 实现快速编辑功能
+- 实现手动调整功能
+- 优化用户体验
 
 ## 技術要點
 
@@ -370,9 +382,7 @@ ScheduleResult {
 
 ## 界面语言规范
 
-**重要：所有界面文本必须使用繁体中文显示**
-
-包括但不限于：
+**重要：所有界面文本必须使用繁体中文显示**包括但不限于：
 
 - 页面标题、按钮文字（新增、編輯、刪除、儲存、取消、匯入、匯出等）
 - 表單標籤（機台名稱、人員名稱、品號、時段等）
@@ -393,5 +403,3 @@ ScheduleResult {
 5. 不合對象的判斷需要通過機台的"週邊機台"欄位
 6. 初版先實現早班，後續擴展中晚班
 7. 生產優先級的六種等級需要用圖標或顏色區分顯示
-8. **所有使用者可見的文字內容必須使用繁體中文**
-9. 所有資料結構都應包含 `createInfo` 和 `editInfo` 欄位，用於記錄建立和修改歷史
