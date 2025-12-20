@@ -328,7 +328,8 @@
                     :operators="operators" @update="updateScheduleItem"></table-view>
                   <list-view v-if="viewMode === 'list'" :selectedDate="selectedDate" :selectedShift="selectedShift"
                     :operators="operators" @update="updateScheduleItem"></list-view>
-                  <overview-view v-if="viewMode === 'overview'" :selectedDate="selectedDate" :machines="machines"></overview-view>
+                  <overview-view v-if="viewMode === 'overview'" :selectedDate="selectedDate" :machines="machines"
+                    :operators="operators" @update="updateScheduleItem"></overview-view>
                 </v-card-text>
               </v-window-item>
             </v-window>

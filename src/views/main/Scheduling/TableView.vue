@@ -67,27 +67,33 @@
                 </v-chip>
               </td>
               <td>
-                <div class="operator-drop-zone d-flex flex-wrap gap-1"
+                <div class="operator-drop-zone"
                   @dragover.prevent="onDragOver($event)"
                   @dragleave="onDragLeave($event)"
                   @drop="onDrop($event, item)">
-                  <v-tooltip v-for="(name, idx) in item.操作人員名稱" :key="idx" location="top">
-                    <template #activator="{ props: tooltipProps }">
-                      <v-chip size="default" color="indigo"
-                        variant="elevated" class="draggable-chip" :draggable="true"
-                        v-bind="tooltipProps"
-                        @dragstart="onDragStart($event, name, item, idx)"
-                        @dragend="onDragEnd">
-                        <v-icon start size="small">mdi-account</v-icon>
-                        {{ name }}
-                      </v-chip>
-                    </template>
-                    <div v-if="getOperatorSkills(item.operatorSnkeys && item.operatorSnkeys[idx])">
-                      <div class="font-weight-bold mb-1">精通品號：</div>
-                      <div>{{ getOperatorSkills(item.operatorSnkeys[idx]) }}</div>
-                    </div>
-                    <div v-else>無精通品號</div>
-                  </v-tooltip>
+                  <div v-for="(name, idx) in item.操作人員名稱" :key="idx" class="d-flex align-center mb-1">
+                    <v-tooltip location="top">
+                      <template #activator="{ props: tooltipProps }">
+                        <v-chip size="default" color="indigo"
+                          variant="elevated" class="draggable-chip" :draggable="true"
+                          v-bind="tooltipProps"
+                          @dragstart="onDragStart($event, name, item, idx)"
+                          @dragend="onDragEnd">
+                          <v-icon start size="small">mdi-account</v-icon>
+                          {{ name }}
+                        </v-chip>
+                      </template>
+                      <div v-if="getOperatorSkills(item.operatorSnkeys && item.operatorSnkeys[idx])">
+                        <div class="font-weight-bold mb-1">精通品號：</div>
+                        <div>{{ getOperatorSkills(item.operatorSnkeys[idx]) }}</div>
+                      </div>
+                      <div v-else>無精通品號</div>
+                    </v-tooltip>
+                    <v-chip v-if="getOperatorTime(item, idx)" size="small" color="teal" variant="tonal" class="ml-2">
+                      <v-icon start size="x-small">mdi-clock-outline</v-icon>
+                      {{ getOperatorTime(item, idx) }}
+                    </v-chip>
+                  </div>
                   <span v-if="!item.操作人員名稱 || item.操作人員名稱.length === 0" class="text-grey drop-hint">-</span>
                 </div>
               </td>
@@ -109,6 +115,44 @@
       </v-card-text>
     </v-card>
 
+    <!-- 複製/移動選擇對話框 -->
+    <v-dialog v-model="copyMoveDialog" max-width="400px" persistent>
+      <v-card>
+        <v-card-title class="dialog-title">
+          <span>選擇操作方式</span>
+        </v-card-title>
+        <v-card-text class="pt-4">
+          <div class="text-body-1 mb-4">
+            將 <strong>{{ pendingDropData?.name }}</strong> 從 <strong>{{ pendingDropData?.sourceItem?.機台名稱 }}</strong> 
+            {{ pendingDropData?.action === 'copy' ? '複製' : '移動' }}到 <strong>{{ pendingDropData?.targetItem?.機台名稱 }}</strong>？
+          </div>
+          <v-radio-group v-model="dropAction" inline>
+            <v-radio label="複製（保留原位置）" value="copy" color="primary">
+              <template #label>
+                <div>
+                  <div class="font-weight-bold">複製</div>
+                  <div class="text-caption text-grey">人員會同時存在於兩個機台</div>
+                </div>
+              </template>
+            </v-radio>
+            <v-radio label="移動（從原位置移除）" value="move" color="primary">
+              <template #label>
+                <div>
+                  <div class="font-weight-bold">移動</div>
+                  <div class="text-caption text-grey">人員會從原機台移除</div>
+                </div>
+              </template>
+            </v-radio>
+          </v-radio-group>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" variant="text" @click="cancelDrop">取消</v-btn>
+          <v-btn color="primary" variant="flat" @click="confirmDrop">確認</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- 快速編輯對話框 -->
     <v-dialog v-model="editDialog" max-width="600px">
       <v-card>
@@ -122,8 +166,30 @@
                 variant="outlined"></v-text-field>
             </v-col>
             <v-col cols="12">
-              <v-autocomplete label="操作人員" v-model="editingItem.操作人員名稱" :items="availableOperatorNames" multiple
-                chips closable-chips density="comfortable" variant="outlined"></v-autocomplete>
+              <div class="text-body-2 mb-2">操作人員</div>
+              <div v-for="(operator, idx) in editingItem.操作人員列表" :key="idx" class="mb-3 pa-3" style="border: 1px solid rgba(0,0,0,0.12); border-radius: 8px;">
+                <div class="d-flex align-center justify-space-between mb-2">
+                  <v-chip size="default" color="indigo" variant="flat">
+                    <v-icon start size="small">mdi-account</v-icon>
+                    {{ operator.name }}
+                  </v-chip>
+                  <v-btn icon="mdi-close" size="x-small" variant="text" @click="removeOperator(idx)"></v-btn>
+                </div>
+                <v-row>
+                  <v-col cols="6">
+                    <v-text-field label="開始時間" v-model="operator.startTime" type="time" density="comfortable"
+                      variant="outlined" hide-details></v-text-field>
+                  </v-col>
+                  <v-col cols="6">
+                    <v-text-field label="結束時間" v-model="operator.endTime" type="time" density="comfortable"
+                      variant="outlined" hide-details></v-text-field>
+                  </v-col>
+                </v-row>
+              </div>
+              <v-autocomplete label="新增操作人員" :items="availableOperatorNames" v-model="newOperatorName"
+                @update:model-value="(val) => { if (val) { addOperator(val); newOperatorName = null } }" 
+                density="comfortable" variant="outlined" clearable>
+              </v-autocomplete>
             </v-col>
             <v-col cols="12">
               <v-textarea label="備註" v-model="editingItem.備註" density="comfortable" variant="outlined" rows="3">
@@ -174,10 +240,14 @@ const loading = ref(false)
 const searchKey = ref('')
 const editDialog = ref(false)
 const editingItem = ref(null)
+const newOperatorName = ref(null)
 
 // 拖拉相關
 const dragData = ref(null)
 const isDragging = ref(false)
+const copyMoveDialog = ref(false)
+const dropAction = ref('move')
+const pendingDropData = ref(null)
 
 // 載入排班資料
 const loadSchedule = async () => {
@@ -251,20 +321,72 @@ const filteredResults = computed(() => {
 // 方法
 const editItem = (item) => {
   editingItem.value = { ...item }
+  
+  // 初始化操作人員列表（如果不存在）
+  if (!editingItem.value.操作人員列表) {
+    editingItem.value.操作人員列表 = []
+    if (editingItem.value.操作人員名稱 && editingItem.value.操作人員名稱.length > 0) {
+      editingItem.value.操作人員名稱.forEach((name, idx) => {
+        const snkey = editingItem.value.operatorSnkeys && editingItem.value.operatorSnkeys[idx] 
+          ? editingItem.value.operatorSnkeys[idx] 
+          : null
+        editingItem.value.操作人員列表.push({
+          name,
+          snkey,
+          startTime: editingItem.value.操作人員時間 && editingItem.value.操作人員時間[idx] 
+            ? editingItem.value.操作人員時間[idx].startTime || '' 
+            : '',
+          endTime: editingItem.value.操作人員時間 && editingItem.value.操作人員時間[idx] 
+            ? editingItem.value.操作人員時間[idx].endTime || '' 
+            : ''
+        })
+      })
+    }
+  }
+  
   editDialog.value = true
+}
+
+// 新增操作人員
+const addOperator = (name) => {
+  if (!name || !editingItem.value) return
+  
+  // 檢查是否已存在
+  if (editingItem.value.操作人員列表.some(op => op.name === name)) {
+    return
+  }
+  
+  const operator = props.operators.find(op => (op.人員名稱 || op.名稱) === name)
+  editingItem.value.操作人員列表.push({
+    name,
+    snkey: operator ? operator.snkey : null,
+    startTime: '',
+    endTime: ''
+  })
+}
+
+// 移除操作人員
+const removeOperator = (idx) => {
+  if (editingItem.value && editingItem.value.操作人員列表) {
+    editingItem.value.操作人員列表.splice(idx, 1)
+  }
 }
 
 const saveEdit = async () => {
   if (!editingItem.value) return
   
-  // 將操作人員名稱轉換為 snkey
-  if (editingItem.value.操作人員名稱 && editingItem.value.操作人員名稱.length > 0) {
-    editingItem.value.operatorSnkeys = editingItem.value.操作人員名稱.map(name => {
-      const operator = props.operators.find(op => (op.人員名稱 || op.名稱) === name)
-      return operator ? operator.snkey : null
-    }).filter(Boolean)
+  // 從操作人員列表轉換為操作人員名稱和operatorSnkeys
+  if (editingItem.value.操作人員列表 && editingItem.value.操作人員列表.length > 0) {
+    editingItem.value.操作人員名稱 = editingItem.value.操作人員列表.map(op => op.name)
+    editingItem.value.operatorSnkeys = editingItem.value.操作人員列表.map(op => op.snkey).filter(Boolean)
+    editingItem.value.操作人員時間 = editingItem.value.操作人員列表.map(op => ({
+      startTime: op.startTime || '',
+      endTime: op.endTime || ''
+    }))
   } else {
+    editingItem.value.操作人員名稱 = []
     editingItem.value.operatorSnkeys = []
+    editingItem.value.操作人員時間 = []
   }
   
   // 更新狀態：根據操作人員數量
@@ -366,6 +488,21 @@ const getOperatorSkills = (snkey) => {
   const operator = props.operators.find(op => op.snkey === snkey)
   if (operator && operator.對應品號 && operator.對應品號.length > 0) {
     return operator.對應品號.join(', ')
+  }
+  return ''
+}
+
+// 取得操作人員時間顯示
+const getOperatorTime = (item, idx) => {
+  if (item.操作人員時間 && item.操作人員時間[idx]) {
+    const time = item.操作人員時間[idx]
+    if (time.startTime && time.endTime) {
+      return `${time.startTime} - ${time.endTime}`
+    } else if (time.startTime) {
+      return `${time.startTime} -`
+    } else if (time.endTime) {
+      return `- ${time.endTime}`
+    }
   }
   return ''
 }
@@ -516,21 +653,48 @@ const onDrop = async (event, targetItem) => {
   const { name, sourceItem, idx } = dragData.value
   
   // 不能拖到同一個機台
-  if (sourceItem.機台名稱 === targetItem.機台名稱) return
-  
-  // 目標已有此人員則跳過
-  if (targetItem.操作人員名稱 && targetItem.操作人員名稱.includes(name)) return
-  
-  // 從來源移除
-  const sourceIdx = sourceItem.operatorSnkeys ? sourceItem.operatorSnkeys[idx] : null
-  sourceItem.操作人員名稱.splice(idx, 1)
-  if (sourceItem.operatorSnkeys) {
-    sourceItem.operatorSnkeys.splice(idx, 1)
+  if (sourceItem.機台名稱 === targetItem.機台名稱) {
+    dragData.value = null
+    return
   }
   
-  // 更新來源狀態
-  if (sourceItem.操作人員名稱.length === 0) {
-    sourceItem.狀態 = '待排'
+  // 目標已有此人員則跳過
+  if (targetItem.操作人員名稱 && targetItem.操作人員名稱.includes(name)) {
+    dragData.value = null
+    return
+  }
+  
+  // 保存拖放資訊，顯示選擇對話框
+  pendingDropData.value = {
+    name,
+    sourceItem: { ...sourceItem },
+    targetItem: { ...targetItem },
+    idx,
+    action: dropAction.value
+  }
+  dropAction.value = 'move' // 預設為移動
+  copyMoveDialog.value = true
+}
+
+// 確認拖放操作
+const confirmDrop = async () => {
+  if (!pendingDropData.value) {
+    copyMoveDialog.value = false
+    return
+  }
+  
+  const { name, sourceItem: sourceItemData, targetItem: targetItemData, idx } = pendingDropData.value
+  const isCopy = dropAction.value === 'copy'
+  
+  // 找到實際的資料引用
+  const sourceItem = scheduleResults.value.find(r => r.machineSnkey === sourceItemData.machineSnkey)
+  const targetItem = scheduleResults.value.find(r => r.machineSnkey === targetItemData.machineSnkey)
+  
+  if (!sourceItem || !targetItem) {
+    copyMoveDialog.value = false
+    pendingDropData.value = null
+    dragData.value = null
+    return
   }
   
   // 加到目標
@@ -541,8 +705,30 @@ const onDrop = async (event, targetItem) => {
     targetItem.operatorSnkeys = []
   }
   targetItem.操作人員名稱.push(name)
-  if (sourceIdx) {
-    targetItem.operatorSnkeys.push(sourceIdx)
+  
+  // 如果是複製，需要找到操作人員的 snkey
+  if (isCopy) {
+    const operator = props.operators.find(op => (op.人員名稱 || op.名稱) === name)
+    if (operator && operator.snkey) {
+      targetItem.operatorSnkeys.push(operator.snkey)
+    }
+  } else {
+    // 移動：使用來源的 snkey
+    const sourceIdx = sourceItem.operatorSnkeys ? sourceItem.operatorSnkeys[idx] : null
+    if (sourceIdx) {
+      targetItem.operatorSnkeys.push(sourceIdx)
+    }
+    
+    // 從來源移除
+    sourceItem.操作人員名稱.splice(idx, 1)
+    if (sourceItem.operatorSnkeys) {
+      sourceItem.operatorSnkeys.splice(idx, 1)
+    }
+    
+    // 更新來源狀態
+    if (sourceItem.操作人員名稱.length === 0) {
+      sourceItem.狀態 = '待排'
+    }
   }
   
   // 更新目標狀態：如果原本是待排、無可用人力或人力不足，加入人員後改為已排
@@ -550,13 +736,14 @@ const onDrop = async (event, targetItem) => {
     targetItem.狀態 = '已排'
   }
   
-  // 透過 API 更新來源資料
-  console.log('--- [機台間拖拉] 開始更新 ---')
+  // 透過 API 更新資料
+  console.log(`--- [機台間拖拉-${isCopy ? '複製' : '移動'}] 開始更新 ---`)
   console.log('來源機台:', sourceItem.機台名稱, ', snkey:', sourceItem.snkey)
   console.log('目標機台:', targetItem.機台名稱, ', snkey:', targetItem.snkey)
-  console.log('移動人員:', name)
+  console.log(`${isCopy ? '複製' : '移動'}人員:`, name)
   
-  if (sourceItem.snkey) {
+  // 如果是移動，更新來源資料
+  if (!isCopy && sourceItem.snkey) {
     console.log('[來源機台] 準備 POST...')
     try {
       const payload = {
@@ -578,7 +765,7 @@ const onDrop = async (event, targetItem) => {
     }
   }
   
-  // 透過 API 更新目標資料
+  // 更新目標資料
   if (targetItem.snkey) {
     console.log('[目標機台] 準備 POST...')
     try {
@@ -589,7 +776,7 @@ const onDrop = async (event, targetItem) => {
           editInfo: [...(targetItem.editInfo || []), {
             name: store.state.pData?.username || 'system',
             time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-            action: '新增人員'
+            action: isCopy ? '複製人員' : '新增人員'
           }]
         })
       }
@@ -600,12 +787,24 @@ const onDrop = async (event, targetItem) => {
       console.error('[目標機台] 更新失敗:', error)
     }
   }
-  console.log('--- [機台間拖拉] 更新完成 ---')
+  console.log(`--- [機台間拖拉-${isCopy ? '複製' : '移動'}] 更新完成 ---`)
   
   // 發送更新事件
-  emit('update', sourceItem)
+  if (!isCopy) {
+    emit('update', sourceItem)
+  }
   emit('update', targetItem)
   
+  // 重置
+  copyMoveDialog.value = false
+  pendingDropData.value = null
+  dragData.value = null
+}
+
+// 取消拖放操作
+const cancelDrop = () => {
+  copyMoveDialog.value = false
+  pendingDropData.value = null
   dragData.value = null
 }
 </script>
