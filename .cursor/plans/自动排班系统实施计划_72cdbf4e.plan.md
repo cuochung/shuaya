@@ -214,10 +214,10 @@ graph TB
 
 - **新增資料時**：
   ```javascript
-      const postData = {
-        datalist: JSON.stringify(list.value)
-      }
-      await api.add(database, postData)
+          const postData = {
+            datalist: JSON.stringify(list.value)
+          }
+          await api.add(database, postData)
   ```
 
 
@@ -225,12 +225,12 @@ graph TB
 
 - **編輯資料時**：
   ```javascript
-      const postData = {
-        snkey: list.value.snkey,
-        datalist: JSON.stringify(list.value),
-        updateTime: dayjs().format("YYYY-MM-DD HH:mm:ss")
-      }
-      await api.post(database, postData)
+          const postData = {
+            snkey: list.value.snkey,
+            datalist: JSON.stringify(list.value),
+            updateTime: dayjs().format("YYYY-MM-DD HH:mm:ss")
+          }
+          await api.post(database, postData)
   ```
 
 
@@ -238,12 +238,12 @@ graph TB
 
 - **刪除資料時**：
   ```javascript
-      const postData = {
-        snkey: item.snkey,
-        tablename: database,
-        datalist: JSON.stringify(item)
-      }
-      await api.delete(database, postData)
+          const postData = {
+            snkey: item.snkey,
+            tablename: database,
+            datalist: JSON.stringify(item)
+          }
+          await api.delete(database, postData)
   ```
 
 
@@ -401,5 +401,3 @@ ScheduleResult {
 3. 品號可能有多個，需要按從左到右的順序優先判定
 4. 同一人可以同時指定多個上班時段
 5. 不合對象的判斷需要通過機台的"週邊機台"欄位
-6. 初版先實現早班，後續擴展中晚班
-7. 生產優先級的六種等級需要用圖標或顏色區分顯示

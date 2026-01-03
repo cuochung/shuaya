@@ -324,11 +324,11 @@
                   </v-expand-transition>
 
                   <!-- 排班結果表格 -->
-                  <table-view v-if="viewMode === 'table'" :selectedDate="selectedDate" :selectedShift="selectedShift"
+                  <table-view v-if="viewMode === 'table'" ref="tableViewRef" :selectedDate="selectedDate" :selectedShift="selectedShift"
                     :operators="operators" @update="updateScheduleItem"></table-view>
-                  <list-view v-if="viewMode === 'list'" :selectedDate="selectedDate" :selectedShift="selectedShift"
+                  <list-view v-if="viewMode === 'list'" ref="listViewRef" :selectedDate="selectedDate" :selectedShift="selectedShift"
                     :operators="operators" @update="updateScheduleItem"></list-view>
-                  <overview-view v-if="viewMode === 'overview'" :selectedDate="selectedDate" :machines="machines"
+                  <overview-view v-if="viewMode === 'overview'" ref="overviewViewRef" :selectedDate="selectedDate" :machines="machines"
                     :operators="operators" @update="updateScheduleItem"></overview-view>
                 </v-card-text>
               </v-window-item>
@@ -367,6 +367,11 @@ const deleting = ref(false)
 const showAttendanceDrawer = ref(false)
 const showRemainingOperators = ref(false)
 const activeTab = ref('input')
+
+// 子組件 refs
+const tableViewRef = ref(null)
+const listViewRef = ref(null)
+const overviewViewRef = ref(null)
 
 // 基礎資料
 const machines = ref([])
@@ -648,6 +653,9 @@ const autoSchedule = async () => {
     // 自動執行存檔
     await saveSchedule()
 
+    // 重新載入子組件的資料
+    await reloadChildComponents()
+
     proxy.$swal({
       icon: "success",
       title: "排班完成並已存檔",
@@ -836,6 +844,13 @@ const deleteSchedule = async () => {
     }
     
     console.log('[刪除排班] 刪除完成!')
+    
+    // 清空畫面上的排班結果
+    scheduleResults.value = []
+    
+    // 重新載入子組件的資料
+    await reloadChildComponents()
+    
     proxy.$swal({
       icon: "success",
       title: "刪除成功",
@@ -843,15 +858,24 @@ const deleteSchedule = async () => {
       timer: 2000
     })
     
-    // 清空畫面上的排班結果
-    scheduleResults.value = []
-    
   } catch (error) {
     console.error('[刪除排班] 發生錯誤:', error)
     proxy.$swal({ icon: "error", title: "刪除失敗: " + error.message })
   } finally {
     deleting.value = false
     console.log('--- [刪除排班] 結束 ---')
+  }
+}
+
+// 重新載入子組件的資料
+const reloadChildComponents = async () => {
+  // 根據當前視圖模式重新載入對應的子組件
+  if (viewMode.value === 'table' && tableViewRef.value && tableViewRef.value.loadSchedule) {
+    await tableViewRef.value.loadSchedule()
+  } else if (viewMode.value === 'list' && listViewRef.value && listViewRef.value.loadSchedule) {
+    await listViewRef.value.loadSchedule()
+  } else if (viewMode.value === 'overview' && overviewViewRef.value && overviewViewRef.value.loadAllShifts) {
+    await overviewViewRef.value.loadAllShifts()
   }
 }
 
