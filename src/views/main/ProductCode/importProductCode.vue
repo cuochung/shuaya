@@ -285,11 +285,17 @@ const parseExcelFile = (file) => {
 
         // 轉換資料：從第6列開始（索引 5）
         const parsedData = []
+        let skippedCount = 0
+        let skippedNoProductCode = 0
+        let skippedNoLaborCode = 0
+        let emptyRowCount = 0
+
         for (let i = 5; i < jsonData.length; i++) {
           const row = jsonData[i]
 
           // 跳過空行
           if (row.every(cell => !cell || cell.toString().trim() === '')) {
+            emptyRowCount++
             continue
           }
 
@@ -334,13 +340,23 @@ const parseExcelFile = (file) => {
           }
           dataItem['人力代碼'] = laborCodes
 
-          // 檢查必要欄位
-          if (!dataItem['品號'] || dataItem['人力代碼'].length === 0) {
-            continue // 跳過不完整的資料
+          // 檢查必要欄位（只檢查品號，人力代碼允許為空）
+          if (!dataItem['品號']) {
+            skippedNoProductCode++
+            skippedCount++
+            continue // 跳過沒有品號的資料
           }
 
+          // 如果人力代碼為空，給予空陣列（不跳過）
           parsedData.push(dataItem)
         }
+
+        console.log('[匯入] 解析統計:')
+        console.log(`  - 總行數: ${jsonData.length - 5} (從第6列開始)`)
+        console.log(`  - 空行數: ${emptyRowCount}`)
+        console.log(`  - 沒有品號被跳過: ${skippedNoProductCode}`)
+        console.log(`  - 總共跳過: ${skippedCount}`)
+        console.log(`  - 成功解析: ${parsedData.length}`)
 
         if (parsedData.length === 0) {
           reject(new Error('Excel 檔案中沒有有效的資料行'))

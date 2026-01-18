@@ -3,10 +3,10 @@ import { defineStore } from 'pinia'
 
 export const useStore = defineStore('company', () => {
   const state = {
-    verMsg: "2025.12.8.1",
+    verMsg: "2026.01.18.1",
     databaseName: "shuaya", //資料庫名
-    base_url: "http://localhost/shuayaapi", //localhost測試用
-    // base_url: "https://www.pddtvgame.com/shuayaapi", //線上專用指定去讀圖片或其他東西的位置
+    // base_url: "http://localhost/shuayaapi", //localhost測試用
+    base_url: "https://www.pddtvgame.com/shuayaapi", //線上專用指定去讀圖片或其他東西的位置
 
     loading: false, //載入中
 
