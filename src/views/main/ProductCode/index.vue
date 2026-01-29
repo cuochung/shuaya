@@ -101,27 +101,27 @@
                         </v-menu>
                       </td>
                       <td>{{ item.raw.NO || '-' }}</td>
-                      <td class="font-weight-bold">{{ item.raw.品號 }}</td>
-                      <td>{{ Array.isArray(item.raw.人力代碼) ? item.raw.人力代碼.join(', ') : (item.raw.人力代碼 || '-') }}</td>
-                      <td>{{ item.raw.品名 || '-' }}</td>
-                      <td>{{ item.raw.客戶 || '-' }}</td>
-                      <td>{{ item.raw.鍵檔日期 || '-' }}</td>
-                      <td>{{ item.raw.主機台 || '-' }}</td>
-                      <td>{{ item.raw.副機台 || '-' }}</td>
-                      <td>{{ item.raw.模穴數 || '-' }}</td>
-                      <td>{{ item.raw.週期 || '-' }}</td>
-                      <td>{{ item.raw.模穴重 || '-' }}</td>
-                      <td>{{ item.raw.廠內用料 || '-' }}</td>
-                      <td>{{ item.raw.顏色 || '-' }}</td>
-                      <td>{{ item.raw.分類碼 || '-' }}</td>
-                      <td>{{ item.raw.有無截流塊 || '-' }}</td>
-                      <td>{{ item.raw.有分模 || '-' }}</td>
-                      <td>{{ item.raw.灌包件 || '-' }}</td>
-                      <td>{{ item.raw.專用箱 || '-' }}</td>
-                      <td>{{ item.raw.模具編號 || '-' }}</td>
-                      <td>{{ item.raw.替換模仁 || '-' }}</td>
-                      <td>{{ item.raw.分模編號 || '-' }}</td>
-                      <td>{{ item.raw.備註 || '-' }}</td>
+                      <td class="font-weight-bold">{{ item.raw.productCode }}</td>
+                      <td>{{ Array.isArray(item.raw.laborCodes) ? item.raw.laborCodes.join(', ') : (item.raw.laborCodes || '-') }}</td>
+                      <td>{{ item.raw.productName || '-' }}</td>
+                      <td>{{ item.raw.customer || '-' }}</td>
+                      <td>{{ item.raw.entryDate || '-' }}</td>
+                      <td>{{ item.raw.mainMachine || '-' }}</td>
+                      <td>{{ item.raw.subMachine || '-' }}</td>
+                      <td>{{ item.raw.cavityCount || '-' }}</td>
+                      <td>{{ item.raw.cycleTime || '-' }}</td>
+                      <td>{{ item.raw.cavityWeight || '-' }}</td>
+                      <td>{{ item.raw.internalMaterial || '-' }}</td>
+                      <td>{{ item.raw.color || '-' }}</td>
+                      <td>{{ item.raw.categoryCode || '-' }}</td>
+                      <td>{{ item.raw.hasRunnerBlock || '-' }}</td>
+                      <td>{{ item.raw.hasSplitMold || '-' }}</td>
+                      <td>{{ item.raw.gatePart || '-' }}</td>
+                      <td>{{ item.raw.specialBox || '-' }}</td>
+                      <td>{{ item.raw.moldNumber || '-' }}</td>
+                      <td>{{ item.raw.replaceMoldCore || '-' }}</td>
+                      <td>{{ item.raw.splitMoldNumber || '-' }}</td>
+                      <td>{{ item.raw.remark || '-' }}</td>
                     </tr>
                   </tbody>
                 </template>
@@ -145,67 +145,67 @@
                 <v-text-field label="NO" v-model="editItem.NO" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="品號" v-model="editItem.品號" :rules="emptyRules" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="品號" v-model="editItem.productCode" :rules="emptyRules" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="人力代碼" v-model="editItem.人力代碼Text" variant="outlined" density="comfortable" hint="多個代碼用逗號分隔" persistent-hint></v-text-field>
+                <v-text-field label="人力代碼" v-model="editItem.laborCodesText" variant="outlined" density="comfortable" hint="多個代碼用逗號分隔" persistent-hint></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="品名" v-model="editItem.品名" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="品名" v-model="editItem.productName" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="客戶" v-model="editItem.客戶" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="客戶" v-model="editItem.customer" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="鍵檔日期" v-model="editItem.鍵檔日期" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="鍵檔日期" v-model="editItem.entryDate" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="主機台" v-model="editItem.主機台" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="主機台" v-model="editItem.mainMachine" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="副機台" v-model="editItem.副機台" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="副機台" v-model="editItem.subMachine" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="模穴數" v-model="editItem.模穴數" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="模穴數" v-model="editItem.cavityCount" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="週期" v-model="editItem.週期" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="週期" v-model="editItem.cycleTime" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="模穴重" v-model="editItem.模穴重" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="模穴重" v-model="editItem.cavityWeight" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="廠內用料" v-model="editItem.廠內用料" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="廠內用料" v-model="editItem.internalMaterial" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="顏色" v-model="editItem.顏色" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="顏色" v-model="editItem.color" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="分類碼" v-model="editItem.分類碼" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="分類碼" v-model="editItem.categoryCode" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="有無截流塊" v-model="editItem.有無截流塊" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="有無截流塊" v-model="editItem.hasRunnerBlock" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="有分模" v-model="editItem.有分模" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="有分模" v-model="editItem.hasSplitMold" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="灌包件" v-model="editItem.灌包件" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="灌包件" v-model="editItem.gatePart" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="專用箱" v-model="editItem.專用箱" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="專用箱" v-model="editItem.specialBox" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="模具編號" v-model="editItem.模具編號" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="模具編號" v-model="editItem.moldNumber" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="替換模仁" v-model="editItem.替換模仁" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="替換模仁" v-model="editItem.replaceMoldCore" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field label="分模編號" v-model="editItem.分模編號" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="分模編號" v-model="editItem.splitMoldNumber" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
               <v-col cols="12">
-                <v-text-field label="備註" v-model="editItem.備註" variant="outlined" density="comfortable"></v-text-field>
+                <v-text-field label="備註" v-model="editItem.remark" variant="outlined" density="comfortable"></v-text-field>
               </v-col>
             </v-row>
           </v-form>
@@ -240,33 +240,58 @@ const addDialog = ref(false)
 const dialogTitle = ref("")
 const editItem = ref({
   NO: '',
-  品號: '',
-  人力代碼: [],
-  人力代碼Text: '',
-  品名: '',
-  客戶: '',
-  鍵檔日期: '',
-  主機台: '',
-  副機台: '',
-  模穴數: '',
-  週期: '',
-  模穴重: '',
-  廠內用料: '',
-  顏色: '',
-  分類碼: '',
-  有無截流塊: '',
-  有分模: '',
-  灌包件: '',
-  專用箱: '',
-  模具編號: '',
-  替換模仁: '',
-  分模編號: '',
-  備註: '',
+  productCode: '',
+  laborCodes: [],
+  laborCodesText: '',
+  productName: '',
+  customer: '',
+  entryDate: '',
+  mainMachine: '',
+  subMachine: '',
+  cavityCount: '',
+  cycleTime: '',
+  cavityWeight: '',
+  internalMaterial: '',
+  color: '',
+  categoryCode: '',
+  hasRunnerBlock: '',
+  hasSplitMold: '',
+  gatePart: '',
+  specialBox: '',
+  moldNumber: '',
+  replaceMoldCore: '',
+  splitMoldNumber: '',
+  remark: '',
   createInfo: {},
   editInfo: []
 })
 const form = ref(null)
 const isEditing = ref(false)
+
+// 欄位對應：舊的中文欄位名 -> 新的英文欄位名
+const fieldMapping = {
+  '品號': 'productCode',
+  '品名': 'productName',
+  '客戶': 'customer',
+  '鍵檔日期': 'entryDate',
+  '主機台': 'mainMachine',
+  '副機台': 'subMachine',
+  '模穴數': 'cavityCount',
+  '週期': 'cycleTime',
+  '模穴重': 'cavityWeight',
+  '廠內用料': 'internalMaterial',
+  '顏色': 'color',
+  '分類碼': 'categoryCode',
+  '有無截流塊': 'hasRunnerBlock',
+  '有分模': 'hasSplitMold',
+  '灌包件': 'gatePart',
+  '專用箱': 'specialBox',
+  '人力代碼': 'laborCodes',
+  '模具編號': 'moldNumber',
+  '替換模仁': 'replaceMoldCore',
+  '分模編號': 'splitMoldNumber',
+  '備註': 'remark',
+}
 
 // 分頁相關
 const currentPage = ref(1);
@@ -309,10 +334,21 @@ const getAllData = async () => {
   await api.get(usingDatabase.value).then((rs) => {
     console.log('[品號資料庫] API 原始回應:', rs)
     if (rs && rs.length > 0) {
-      items.value = rs.map((i) => ({
-        ...JSON.parse(i.datalist),
-        snkey: i.snkey,
-      }))
+      items.value = rs.map((i) => {
+        const raw = JSON.parse(i.datalist || '{}')
+
+        // 將舊的中文欄位名轉成新的英文欄位名，避免舊資料壞掉
+        const normalized = {}
+        Object.entries(raw).forEach(([key, value]) => {
+          const mappedKey = fieldMapping[key] || key
+          normalized[mappedKey] = value
+        })
+
+        return {
+          ...normalized,
+          snkey: i.snkey,
+        }
+      })
       console.log('[品號資料庫] 解析後資料:', items.value)
       if (items.value.length > 0) {
         console.log('[品號資料庫] 第一筆資料結構:', items.value[0])
@@ -328,28 +364,28 @@ const openAddDialog = () => {
   dialogTitle.value = "新增品號"
   editItem.value = {
     NO: '',
-    品號: '',
-    人力代碼: [],
-    人力代碼Text: '',
-    品名: '',
-    客戶: '',
-    鍵檔日期: '',
-    主機台: '',
-    副機台: '',
-    模穴數: '',
-    週期: '',
-    模穴重: '',
-    廠內用料: '',
-    顏色: '',
-    分類碼: '',
-    有無截流塊: '',
-    有分模: '',
-    灌包件: '',
-    專用箱: '',
-    模具編號: '',
-    替換模仁: '',
-    分模編號: '',
-    備註: '',
+    productCode: '',
+    laborCodes: [],
+    laborCodesText: '',
+    productName: '',
+    customer: '',
+    entryDate: '',
+    mainMachine: '',
+    subMachine: '',
+    cavityCount: '',
+    cycleTime: '',
+    cavityWeight: '',
+    internalMaterial: '',
+    color: '',
+    categoryCode: '',
+    hasRunnerBlock: '',
+    hasSplitMold: '',
+    gatePart: '',
+    specialBox: '',
+    moldNumber: '',
+    replaceMoldCore: '',
+    splitMoldNumber: '',
+    remark: '',
     createInfo: {},
     editInfo: []
   }
@@ -361,7 +397,7 @@ const edit = (item) => {
   dialogTitle.value = "修改品號"
   editItem.value = { 
     ...item,
-    人力代碼Text: Array.isArray(item.人力代碼) ? item.人力代碼.join(', ') : (item.人力代碼 || '')
+    laborCodesText: Array.isArray(item.laborCodes) ? item.laborCodes.join(', ') : (item.laborCodes || '')
   }
   addDialog.value = true
 }
@@ -380,15 +416,15 @@ const saveItem = async () => {
       proxy.$swal({ icon: "error", title: "NO已存在!!" })
       return
     }
-    const match = items.value.find(i => i.品號 == editItem.value.品號)
+    const match = items.value.find(i => i.productCode == editItem.value.productCode)
     if (match) {
       proxy.$swal({ icon: "error", title: "品號已存在!!" })
       return
     }
 
     // 將人力代碼文字轉為陣列
-    editItem.value.人力代碼 = editItem.value.人力代碼Text 
-      ? editItem.value.人力代碼Text.split(/[,，]/).map(c => c.trim()).filter(c => c)
+    editItem.value.laborCodes = editItem.value.laborCodesText 
+      ? editItem.value.laborCodesText.split(/[,，]/).map(c => c.trim()).filter(c => c)
       : []
 
     editItem.value.createInfo = {
@@ -399,7 +435,7 @@ const saveItem = async () => {
 
     // 移除臨時欄位
     const saveData = { ...editItem.value }
-    delete saveData.人力代碼Text
+    delete saveData.laborCodesText
 
     const postData = {
       datalist: JSON.stringify(saveData)
@@ -418,8 +454,8 @@ const saveItem = async () => {
   } else {
     // 修改
     // 將人力代碼文字轉為陣列
-    editItem.value.人力代碼 = editItem.value.人力代碼Text 
-      ? editItem.value.人力代碼Text.split(/[,，]/).map(c => c.trim()).filter(c => c)
+    editItem.value.laborCodes = editItem.value.laborCodesText 
+      ? editItem.value.laborCodesText.split(/[,，]/).map(c => c.trim()).filter(c => c)
       : []
 
     editItem.value.editInfo.unshift({
@@ -430,7 +466,7 @@ const saveItem = async () => {
 
     // 移除臨時欄位
     const saveData = { ...editItem.value }
-    delete saveData.人力代碼Text
+    delete saveData.laborCodesText
 
     const postData = {
       snkey: editItem.value.snkey,

@@ -32,16 +32,6 @@
                     :rules="emptyRules" density="comfortable" variant="outlined"></v-text-field>
                 </v-col>
                 <v-col cols="12">
-                  <div class="d-flex align-center">
-                    <v-icon color="primary" class="mr-2">mdi-flag-variant</v-icon>
-                    <span class="text-body-2 mr-4">生產優先</span>
-                    <v-radio-group v-model="list.生產優先" :rules="emptyRules" inline hide-details>
-                      <v-radio v-for="option in priorityOptions" :key="option" :label="option" :value="option"
-                        :color="getPriorityColor(option)"></v-radio>
-                    </v-radio-group>
-                  </div>
-                </v-col>
-                <v-col cols="12">
                   <v-autocomplete label="週邊機台（處理人員不合情況）" prepend-icon="mdi-arrow-split-horizontal"
                     v-model="list.週邊機台" :items="machineOptions" item-title="text" item-value="value" multiple chips
                     closable-chips density="comfortable" variant="outlined"
@@ -103,9 +93,6 @@ const machineNameField = ref(null)
 
 // Validation rules
 const emptyRules = [(v) => !!v || "不可空白"]
-
-// 生產優先選項
-const priorityOptions = ['方塊', '大圈', '小圈', '大三角', '小三角', '空白']
 
 // Computed
 const machineOptions = computed(() => {
@@ -211,18 +198,6 @@ const editOK = async () => {
   } else {
     proxy.$swal({ icon: "error", title: "資料輸入不完整!!請再次確認!!" })
   }
-}
-
-const getPriorityColor = (priority) => {
-  const colorMap = {
-    '方塊': 'red',
-    '大圈': 'orange',
-    '小圈': 'yellow-darken-2',
-    '大三角': 'light-green',
-    '小三角': 'light-blue',
-    '空白': 'grey'
-  }
-  return colorMap[priority] || 'grey'
 }
 
 defineExpose({

@@ -28,46 +28,6 @@
         </v-col>
       </v-row>
 
-      <!-- 控制區 -->
-      <v-row class="mt-4">
-        <v-col cols="12">
-          <v-sheet class="scheduling-toolbar" elevation="0" rounded="xl">
-            <v-row align="center">
-              <v-col cols="12" md="3">
-                <v-text-field v-model="selectedDate" type="date" label="選擇日期" density="comfortable" variant="outlined"
-                  hide-details prepend-inner-icon="mdi-calendar"></v-text-field>
-              </v-col>
-              <v-col cols="12" md="2">
-                <v-select v-model="selectedShift" :items="shiftOptions" label="選擇時段" density="comfortable"
-                  variant="outlined" hide-details prepend-inner-icon="mdi-clock-outline"></v-select>
-              </v-col>
-              <v-col cols="12" md="5" class="d-flex ga-2">
-                <v-btn color="secondary" variant="elevated" prepend-icon="mdi-account-clock"
-                  @click="showAttendanceDrawer = true">
-                  出勤人員管理
-                </v-btn>
-                <v-btn color="primary" variant="elevated" prepend-icon="mdi-auto-fix" @click="autoSchedule"
-                  :loading="loading">
-                  自動排班
-                </v-btn>
-                <v-btn color="info" variant="elevated" prepend-icon="mdi-database-import"
-                  @click="loadSchedule" :loading="loadingSchedule">
-                  讀取指定日期及時段排班資料
-                </v-btn>
-                <!-- <v-btn color="success" variant="elevated" prepend-icon="mdi-content-save"
-                  @click="saveSchedule" :loading="saving" :disabled="scheduleResults.length === 0">
-                  存檔
-                </v-btn> -->
-                <v-btn color="error" variant="elevated" prepend-icon="mdi-delete"
-                  @click="confirmDeleteSchedule" :loading="deleting">
-                  刪除指定日期及時段排班資料
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-sheet>
-        </v-col>
-      </v-row>
-
       <!-- Tab 切換區 -->
       <v-row class="mt-4">
         <v-col cols="12">
@@ -89,15 +49,54 @@
             <v-window v-model="activeTab">
               <!-- 步驟1: 機台列表 - 輸入品號 -->
               <v-window-item value="input">
-                <v-card-title class="d-flex align-center justify-space-between pt-4">
-                  <div class="text-body-2 text-grey">設定各機台的品號、生產優先及備註</div>
-                  <div class="d-flex gap-2">
-                    <v-btn color="secondary" variant="tonal" size="small" prepend-icon="mdi-content-save" @click="saveToLocalStorage">
-                      暫存
-                    </v-btn>
-                    <v-btn color="info" variant="tonal" size="small" prepend-icon="mdi-download" @click="loadFromLocalStorage">
-                      讀取暫存
-                    </v-btn>
+                <v-card-title class="scheduling-toolbar-in-card pt-4 pb-3">
+                  <!-- 第一列：說明 + 暫存區 -->
+                  <div class="toolbar-row toolbar-row-head">
+                    <span class="text-body-2 text-medium-emphasis">設定各機台的品號、生產優先及備註</span>
+                    <div class="toolbar-group toolbar-group-storage">
+                      <v-btn color="secondary" variant="tonal" size="small" prepend-icon="mdi-content-save"
+                        @click="saveToLocalStorage">
+                        暫存
+                      </v-btn>
+                      <v-btn color="info" variant="tonal" size="small" prepend-icon="mdi-download"
+                        @click="loadFromLocalStorage">
+                        讀取暫存
+                      </v-btn>
+                    </div>
+                  </div>
+                  <!-- 第二列：日期時段 + 排班操作 -->
+                  <div class="toolbar-row toolbar-row-actions">
+                    <div class="toolbar-group toolbar-group-filter">
+                      <v-text-field v-model="selectedDate" type="date" label="選擇日期" density="compact"
+                        variant="outlined" hide-details prepend-inner-icon="mdi-calendar" class="toolbar-field-date" />
+                      <v-select v-model="selectedShift" :items="shiftOptions" label="選擇時段" density="compact"
+                        variant="outlined" hide-details prepend-inner-icon="mdi-clock-outline" class="toolbar-field-shift" />
+                    </div>
+                    <div class="toolbar-divider" aria-hidden="true" />
+                    <div class="toolbar-group toolbar-group-buttons">
+                      <v-btn color="secondary" variant="elevated" size="small" prepend-icon="mdi-account-clock"
+                        @click="showAttendanceDrawer = true">
+                        <span class="d-none d-sm-inline">出勤人員管理</span>
+                        <span class="d-inline d-sm-none">出勤</span>
+                      </v-btn>
+                      <v-btn color="primary" variant="elevated" size="small" prepend-icon="mdi-auto-fix"
+                        @click="autoSchedule" :loading="loading">
+                        <span class="d-none d-sm-inline">自動排班</span>
+                        <span class="d-inline d-sm-none">排班</span>
+                      </v-btn>
+                      <v-btn color="info" variant="elevated" size="small" prepend-icon="mdi-database-import"
+                        @click="loadSchedule" :loading="loadingSchedule">
+                        <span class="d-none d-md-inline">讀取指定日期及時段排班資料</span>
+                        <span class="d-none d-sm-inline d-md-none">讀取排班</span>
+                        <span class="d-inline d-sm-none">讀取</span>
+                      </v-btn>
+                      <v-btn color="error" variant="elevated" size="small" prepend-icon="mdi-delete"
+                        @click="confirmDeleteSchedule" :loading="deleting">
+                        <span class="d-none d-md-inline">刪除指定日期及時段排班資料</span>
+                        <span class="d-none d-sm-inline d-md-none">刪除排班</span>
+                        <span class="d-inline d-sm-none">刪除</span>
+                      </v-btn>
+                    </div>
                   </div>
                 </v-card-title>
                 <v-card-text>
@@ -113,28 +112,16 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr 
-                        v-for="(machine, index) in machineInputList" 
-                        :key="machine.snkey"
-                        :class="{ 'editing-row': editingIndex === index }"
-                        @click="startEdit(index)"
-                      >
+                      <tr v-for="(machine, index) in machineInputList" :key="machine.snkey"
+                        :class="{ 'editing-row': editingIndex === index }" @click="startEdit(index)">
                         <td class="font-weight-bold">{{ machine.機台編號 }}</td>
                         <td class="font-weight-bold">{{ machine.機台名稱 }}</td>
                         <td>
                           <template v-if="editingIndex === index">
-                            <v-combobox
-                              :ref="el => setComboboxRef(el, index)"
-                              v-model="machine.輸入品號"
-                              :items="productCodeOptions"
-                              label="輸入或選擇品號"
-                              density="compact"
-                              variant="outlined"
-                              hide-details
-                              clearable
-                              @update:modelValue="onProductCodeChange(index)"
-                              @click.stop
-                            ></v-combobox>
+                            <v-combobox :ref="el => setComboboxRef(el, index)" v-model="machine.輸入品號"
+                              :items="productCodeOptions" label="輸入或選擇品號" density="compact" variant="outlined"
+                              hide-details clearable @update:modelValue="onProductCodeChange(index)"
+                              @click.stop></v-combobox>
                           </template>
                           <template v-else>
                             <span v-if="machine.輸入品號" class="text-primary font-weight-bold text-body-1">
@@ -144,22 +131,16 @@
                           </template>
                         </td>
                         <td>
-                          <span v-if="machine.人力代碼" class="font-weight-bold" :class="'text-' + getLaborCodeColor(machine.人力代碼)">
+                          <span v-if="machine.人力代碼" class="font-weight-bold"
+                            :class="'text-' + getLaborCodeColor(machine.人力代碼)">
                             {{ machine.人力代碼 }}
                           </span>
                           <span v-else class="text-grey">-</span>
                         </td>
                         <td>
                           <template v-if="editingIndex === index">
-                            <v-select
-                              v-model="machine.生產優先"
-                              :items="priorityOptions"
-                              label="優先"
-                              density="compact"
-                              variant="outlined"
-                              hide-details
-                              @click.stop
-                            >
+                            <v-select v-model="machine.生產優先" :items="priorityOptions" label="優先" density="compact"
+                              variant="outlined" hide-details @click.stop>
                               <template v-slot:item="{ item, props }">
                                 <v-list-item v-bind="props">
                                   <template v-slot:prepend>
@@ -178,7 +159,8 @@
                             </v-select>
                           </template>
                           <template v-else>
-                            <v-chip v-if="machine.生產優先" size="default" :color="getPriorityColor(machine.生產優先)" variant="flat" class="priority-chip">
+                            <v-chip v-if="machine.生產優先" size="default" :color="getPriorityColor(machine.生產優先)"
+                              variant="flat" class="priority-chip">
                               <v-icon start size="18">{{ getPriorityIcon(machine.生產優先) }}</v-icon>
                               {{ machine.生產優先 }}
                             </v-chip>
@@ -187,14 +169,8 @@
                         </td>
                         <td>
                           <template v-if="editingIndex === index">
-                            <v-text-field
-                              v-model="machine.備註"
-                              label="備註"
-                              density="compact"
-                              variant="outlined"
-                              hide-details
-                              @click.stop
-                            ></v-text-field>
+                            <v-text-field v-model="machine.備註" label="備註" density="compact" variant="outlined"
+                              hide-details @click.stop></v-text-field>
                           </template>
                           <template v-else>
                             <span v-if="machine.備註">{{ machine.備註 }}</span>
@@ -213,10 +189,10 @@
                 <v-card-text>
                   <div class="d-flex justify-end mb-4">
                     <v-btn-toggle v-model="viewMode" mandatory color="primary" variant="outlined" divided>
-                      <v-btn value="table" size="small">
+                      <!-- <v-btn value="table" size="small">
                         <v-icon start>mdi-table</v-icon>
                         表格
-                      </v-btn>
+                      </v-btn> -->
                       <v-btn value="list" size="small">
                         <v-icon start>mdi-view-list</v-icon>
                         列表
@@ -228,8 +204,8 @@
                     </v-btn-toggle>
                   </div>
                   <v-row v-if="scheduleResults.length > 0" dense class="mb-4">
-<v-col cols="6" sm="2">
-                        <v-card class="stat-card" color="success" variant="tonal">
+                    <v-col cols="6" sm="2">
+                      <v-card class="stat-card" color="success" variant="tonal">
                         <v-card-text class="d-flex align-center pa-3">
                           <v-icon size="28" class="mr-2">mdi-check-circle</v-icon>
                           <div>
@@ -239,8 +215,8 @@
                         </v-card-text>
                       </v-card>
                     </v-col>
-<v-col cols="6" sm="2">
-                        <v-card class="stat-card" :color="unscheduledCount > 0 ? 'grey' : 'success'" variant="tonal">
+                    <v-col cols="6" sm="2">
+                      <v-card class="stat-card" :color="unscheduledCount > 0 ? 'grey' : 'success'" variant="tonal">
                         <v-card-text class="d-flex align-center pa-3">
                           <v-icon size="28" class="mr-2">mdi-clock-outline</v-icon>
                           <div>
@@ -250,19 +226,20 @@
                         </v-card-text>
                       </v-card>
                     </v-col>
-<v-col cols="6" sm="2">
-                        <v-card class="stat-card" color="warning" variant="tonal">
+                    <v-col cols="6" sm="2">
+                      <v-card class="stat-card" color="warning" variant="tonal">
                         <v-card-text class="d-flex align-center pa-3">
                           <v-icon size="28" class="mr-2">mdi-alert</v-icon>
                           <div>
                             <div class="text-caption">人力不足/無可用</div>
-                            <div class="text-h6 font-weight-bold">{{ (statistics.人力不足 || 0) + (statistics.無可用人力 || 0) }}</div>
+                            <div class="text-h6 font-weight-bold">{{ (statistics.人力不足 || 0) + (statistics.無可用人力 || 0) }}
+                            </div>
                           </div>
                         </v-card-text>
                       </v-card>
                     </v-col>
-<v-col cols="6" sm="2">
-                        <v-card class="stat-card" color="info" variant="tonal">
+                    <v-col cols="6" sm="2">
+                      <v-card class="stat-card" color="info" variant="tonal">
                         <v-card-text class="d-flex align-center pa-3">
                           <v-icon size="28" class="mr-2">mdi-robot</v-icon>
                           <div>
@@ -272,8 +249,8 @@
                         </v-card-text>
                       </v-card>
                     </v-col>
-<v-col cols="6" sm="2">
-                        <v-card class="stat-card" color="primary" variant="tonal">
+                    <v-col cols="6" sm="2">
+                      <v-card class="stat-card" color="primary" variant="tonal">
                         <v-card-text class="d-flex align-center pa-3">
                           <v-icon size="28" class="mr-2">mdi-account-group</v-icon>
                           <div>
@@ -283,16 +260,18 @@
                         </v-card-text>
                       </v-card>
                     </v-col>
-<v-col cols="6" sm="2">
-                        <v-card class="stat-card stat-card--clickable" :color="statistics.剩餘人力 > 0 ? 'teal' : 'error'" variant="tonal"
-                          @click="showRemainingOperators = !showRemainingOperators">
+                    <v-col cols="6" sm="2">
+                      <v-card class="stat-card stat-card--clickable" :color="statistics.剩餘人力 > 0 ? 'teal' : 'error'"
+                        variant="tonal" @click="showRemainingOperators = !showRemainingOperators">
                         <v-card-text class="d-flex align-center pa-3">
                           <v-icon size="28" class="mr-2">mdi-account-clock</v-icon>
                           <div>
                             <div class="text-caption">剩餘人力</div>
                             <div class="text-h6 font-weight-bold">{{ statistics.剩餘人力 }}</div>
                           </div>
-                          <v-icon size="20" class="ml-auto">{{ showRemainingOperators ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                          <v-icon size="20" class="ml-auto">{{ showRemainingOperators ? 'mdi-chevron-up' :
+                            'mdi-chevron-down'
+                            }}</v-icon>
                         </v-card-text>
                       </v-card>
                     </v-col>
@@ -300,7 +279,7 @@
 
                   <!-- 剩餘人力列表 -->
                   <v-expand-transition>
-                    <v-sheet v-if="showRemainingOperators && remainingOperators.length > 0" 
+                    <v-sheet v-if="showRemainingOperators && remainingOperators.length > 0"
                       class="remaining-operators-sheet mb-4" rounded="lg" color="teal-lighten-5">
                       <div class="pa-3">
                         <div class="text-subtitle-2 font-weight-bold mb-2 text-teal-darken-2">
@@ -308,10 +287,9 @@
                           尚未排入的可用人員 ({{ remainingOperators.length }}人) - 可拖拉至機台
                         </div>
                         <div class="d-flex flex-wrap gap-2">
-                          <v-chip v-for="op in remainingOperators" :key="op.snkey" 
+                          <v-chip v-for="op in remainingOperators" :key="op.snkey"
                             :color="op.性別 === '男' ? 'blue' : 'pink'" variant="elevated" size="default"
-                            class="draggable-remaining-chip"
-                            :draggable="true"
+                            class="draggable-remaining-chip" :draggable="true"
                             @dragstart="onRemainingDragStart($event, op)">
                             <v-avatar start :color="op.性別 === '男' ? 'blue-darken-2' : 'pink-darken-2'" size="24">
                               <span class="text-white text-caption">{{ op.性別 }}</span>
@@ -324,12 +302,15 @@
                   </v-expand-transition>
 
                   <!-- 排班結果表格 -->
-                  <table-view v-if="viewMode === 'table'" ref="tableViewRef" :selectedDate="selectedDate" :selectedShift="selectedShift"
-                    :operators="operators" @update="updateScheduleItem"></table-view>
-                  <list-view v-if="viewMode === 'list'" ref="listViewRef" :selectedDate="selectedDate" :selectedShift="selectedShift"
-                    :operators="operators" @update="updateScheduleItem"></list-view>
-                  <overview-view v-if="viewMode === 'overview'" ref="overviewViewRef" :selectedDate="selectedDate" :machines="machines"
-                    :operators="operators" @update="updateScheduleItem"></overview-view>
+                  <table-view v-if="viewMode === 'table'" ref="tableViewRef" :selectedDate="selectedDate"
+                    :selectedShift="selectedShift" :operators="operators" :productCodes="productCodes"
+                    @update="updateScheduleItem"></table-view>
+                  <list-view v-if="viewMode === 'list'" ref="listViewRef" :selectedDate="selectedDate"
+                    :selectedShift="selectedShift" :operators="operators" :productCodes="productCodes"
+                    @update="updateScheduleItem"></list-view>
+                  <overview-view v-if="viewMode === 'overview'" ref="overviewViewRef" :selectedDate="selectedDate"
+                    :machines="machines" :operators="operators" :productCodes="productCodes"
+                    @update="updateScheduleItem"></overview-view>
                 </v-card-text>
               </v-window-item>
             </v-window>
@@ -345,6 +326,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useStore } from '@/stores/useStore'
 import { getCurrentInstance } from 'vue'
 import { generateSchedule, getScheduleStatistics } from '@/services/schedulingService'
+import { convertOldToNew, convertBatchToNew } from '@/utils/scheduleDataAdapter'
 import TableView from './TableView.vue'
 import ListView from './ListView.vue'
 import OverviewView from './OverviewView.vue'
@@ -358,7 +340,7 @@ const store = useStore()
 // 響應式數據
 const selectedDate = ref(dayjs().format('YYYY-MM-DD'))
 const selectedShift = ref('早')
-const viewMode = ref('table')
+const viewMode = ref('list')
 const scheduleResults = ref([])
 const loading = ref(false)
 const saving = ref(false)
@@ -432,7 +414,7 @@ const loadFromLocalStorage = () => {
     proxy.$swal({ icon: "warning", title: `${selectedShift.value}班 無暫存資料`, timer: 1500 })
     return
   }
-  
+
   try {
     const savedData = JSON.parse(saved)
     // 將暫存資料套用到 machineInputList
@@ -452,9 +434,9 @@ const loadFromLocalStorage = () => {
   }
 }
 
-// 品號選項 (用於下拉選單)
+// 品號選項 (用於下拉選單，使用英文欄位 productCode)
 const productCodeOptions = computed(() => {
-  return productCodes.value.map(pc => pc.品號)
+  return productCodes.value.map(pc => pc.productCode).filter(Boolean)
 })
 
 // 生產優先選項
@@ -511,14 +493,24 @@ const unscheduledCount = computed(() => {
 
 // 剩餘可用人員（已上班且符合時段，但未被排入）
 const remainingOperators = computed(() => {
-  // 已被分配的人員 snkey
+  // 已被分配的人員 snkey（新格式：從 products[].operators[] 收集）
   const assignedSnkeys = new Set()
   scheduleResults.value.forEach(result => {
+    // 新格式：遍歷 products 陣列
+    if (result.products && result.products.length > 0) {
+      result.products.forEach(product => {
+        if (product.operators && product.operators.length > 0) {
+          product.operators.forEach(op => assignedSnkeys.add(op.snkey))
+        }
+      })
+    }
+    
+    // 舊格式相容（如果有的話）
     if (result.operatorSnkeys && result.operatorSnkeys.length > 0) {
       result.operatorSnkeys.forEach(snkey => assignedSnkeys.add(snkey))
     }
   })
-  
+
   // 過濾出可用但未被分配的人員
   return operators.value.filter(op => {
     // 只看上班狀態
@@ -568,13 +560,54 @@ const loadBaseData = async () => {
       }))
     }
 
-    // 載入品號資料
+    // 載入品號資料（需要進行欄位名稱轉換）
     const productCodeRs = await api.get('productcode')
     if (productCodeRs && productCodeRs.length > 0) {
-      productCodes.value = productCodeRs.map(i => ({
-        ...JSON.parse(i.datalist),
-        snkey: i.snkey
-      }))
+      // 欄位對應：舊的中文欄位名 -> 新的英文欄位名
+      const fieldMapping = {
+        '品號': 'productCode',
+        '品名': 'productName',
+        '客戶': 'customer',
+        '鍵檔日期': 'entryDate',
+        '主機台': 'mainMachine',
+        '副機台': 'subMachine',
+        '模穴數': 'cavityCount',
+        '週期': 'cycleTime',
+        '模穴重': 'cavityWeight',
+        '廠內用料': 'internalMaterial',
+        '顏色': 'color',
+        '分類碼': 'categoryCode',
+        '有無截流塊': 'hasRunnerBlock',
+        '有分模': 'hasSplitMold',
+        '灌包件': 'gatePart',
+        '專用箱': 'specialBox',
+        '人力代碼': 'laborCodes',
+        '模具編號': 'moldNumber',
+        '替換模仁': 'replaceMoldCore',
+        '分模編號': 'splitMoldNumber',
+        '備註': 'remark',
+      }
+      
+      productCodes.value = productCodeRs.map(i => {
+        const raw = JSON.parse(i.datalist || '{}')
+        
+        // 將舊的中文欄位名轉成新的英文欄位名，避免舊資料壞掉
+        const normalized = {}
+        Object.entries(raw).forEach(([key, value]) => {
+          const mappedKey = fieldMapping[key] || key
+          normalized[mappedKey] = value
+        })
+        
+        return {
+          ...normalized,
+          snkey: i.snkey
+        }
+      })
+      
+      console.log('[Scheduling-index] 載入品號資料:', productCodes.value.length, '筆')
+      if (productCodes.value.length > 0) {
+        console.log('[Scheduling-index] 第一筆品號資料結構:', productCodes.value[0])
+      }
     }
   } catch (error) {
     console.error('載入基礎資料錯誤:', error)
@@ -586,16 +619,16 @@ const loadBaseData = async () => {
 const onProductCodeChange = (index) => {
   const machine = machineInputList.value[index]
   const productCode = machine.輸入品號
-  
+
   if (!productCode) {
     machine.人力代碼 = ''
     return
   }
-  
-  // 從品號資料中找對應的人力代碼
-  const productCodeData = productCodes.value.find(pc => pc.品號 === productCode)
-  if (productCodeData && productCodeData.人力代碼 && productCodeData.人力代碼.length > 0) {
-    machine.人力代碼 = productCodeData.人力代碼[0]
+
+  // 從品號資料中找對應的人力代碼（使用英文欄位）
+  const productCodeData = productCodes.value.find(pc => pc.productCode === productCode)
+  if (productCodeData && productCodeData.laborCodes && productCodeData.laborCodes.length > 0) {
+    machine.人力代碼 = productCodeData.laborCodes[0]
   } else {
     machine.人力代碼 = ''
   }
@@ -646,9 +679,10 @@ const autoSchedule = async () => {
     )
 
     scheduleResults.value = results
-    
-    // 自動切換到排班結果頁籤
+
+    // 自動切換到排班結果頁籤，並設定為列表視圖
     activeTab.value = 'result'
+    viewMode.value = 'list'
 
     // 自動執行存檔
     await saveSchedule()
@@ -678,7 +712,7 @@ const saveSchedule = async () => {
     console.log('[saveSchedule] Step 1: 查詢當日排班資料...')
     console.log('[saveSchedule] 查詢日期:', selectedDate.value)
     console.log('[saveSchedule] 查詢時段:', selectedShift.value)
-    
+
     const payload = {
       key: 'date',
       value: selectedDate.value,
@@ -686,11 +720,11 @@ const saveSchedule = async () => {
     const url = `byjson/searchByKeyValue/${store.state.databaseName}/schedule`
     console.log('[saveSchedule] API URL:', url)
     console.log('[saveSchedule] API Payload:', payload)
-    
+
     const existingData = await api.options(url, payload)
     console.log('[saveSchedule] Step 1 完成: 查詢結果', existingData)
     console.log('[saveSchedule] 查詢到的資料筆數:', existingData?.length || 0)
-    
+
     // 2. 過濾出同時段的資料並刪除
     console.log('[saveSchedule] Step 2: 過濾同時段資料...')
     if (existingData && existingData.length > 0) {
@@ -699,7 +733,7 @@ const saveSchedule = async () => {
         return parsed.shift === selectedShift.value
       })
       console.log('[saveSchedule] 同時段資料筆數:', sameShiftData.length)
-      
+
       // 刪除同日期同時段的舊資料
       if (sameShiftData.length > 0) {
         console.log('[saveSchedule] Step 2.1: 開始刪除舊資料...')
@@ -794,7 +828,7 @@ const deleteSchedule = async () => {
   deleting.value = true
   console.log('--- [刪除排班] 開始 ---')
   console.log('日期:', selectedDate.value, ', 時段:', selectedShift.value)
-  
+
   try {
     // 1. 查詢當日排班資料
     console.log('[刪除排班] Step 1: 查詢當日排班資料...')
@@ -805,13 +839,13 @@ const deleteSchedule = async () => {
     const url = `byjson/searchByKeyValue/${store.state.databaseName}/schedule`
     const existingSchedules = await api.options(url, payload)
     console.log('[刪除排班] 查詢結果:', existingSchedules)
-    
+
     if (!existingSchedules || existingSchedules.length === 0) {
       console.log('[刪除排班] 當日無排班資料')
       proxy.$swal({ icon: "info", title: "無資料", text: "當日無排班資料可刪除" })
       return
     }
-    
+
     // 2. 過濾出同時段的資料
     console.log('[刪除排班] Step 2: 過濾同時段資料...')
     const schedulesToDelete = existingSchedules.filter(item => {
@@ -819,13 +853,13 @@ const deleteSchedule = async () => {
       return datalist.shift === selectedShift.value
     })
     console.log('[刪除排班] 符合時段的資料筆數:', schedulesToDelete.length)
-    
+
     if (schedulesToDelete.length === 0) {
       console.log('[刪除排班] 該時段無排班資料')
       proxy.$swal({ icon: "info", title: "無資料", text: `${selectedShift.value}班無排班資料可刪除` })
       return
     }
-    
+
     // 3. 逐筆刪除
     console.log('[刪除排班] Step 3: 開始刪除...')
     for (const item of schedulesToDelete) {
@@ -842,22 +876,22 @@ const deleteSchedule = async () => {
       const deleteResult = await api.delete('schedule', deleteData)
       console.log('[刪除排班] 刪除結果:', deleteResult)
     }
-    
+
     console.log('[刪除排班] 刪除完成!')
-    
+
     // 清空畫面上的排班結果
     scheduleResults.value = []
-    
+
     // 重新載入子組件的資料
     await reloadChildComponents()
-    
+
     proxy.$swal({
       icon: "success",
       title: "刪除成功",
       text: `已刪除 ${schedulesToDelete.length} 筆 ${selectedDate.value} ${selectedShift.value}班 排班資料`,
       timer: 2000
     })
-    
+
   } catch (error) {
     console.error('[刪除排班] 發生錯誤:', error)
     proxy.$swal({ icon: "error", title: "刪除失敗: " + error.message })
@@ -901,7 +935,7 @@ const loadSchedule = async () => {
     const rs = await api.get('schedule')
     if (rs && rs.length > 0) {
       // 過濾出符合日期和時段的排班
-      const filtered = rs
+      let filtered = rs
         .map(i => ({
           ...JSON.parse(i.datalist),
           snkey: i.snkey
@@ -909,8 +943,18 @@ const loadSchedule = async () => {
         .filter(item => item.date === selectedDate.value && item.shift === selectedShift.value)
 
       if (filtered.length > 0) {
-        scheduleResults.value = filtered
+        // 自動轉換舊格式為新格式
+        console.log('[loadSchedule] 讀取到的資料:', filtered)
+        scheduleResults.value = convertBatchToNew(filtered)
+        console.log('[loadSchedule] 轉換後的資料:', scheduleResults.value)
+
+        // 自動切換到排班結果頁籤，並設定為列表視圖
         activeTab.value = 'result'
+        viewMode.value = 'list'
+
+        // 重新載入子組件的資料
+        await reloadChildComponents()
+
         proxy.$swal({
           icon: "success",
           title: "讀取成功",
@@ -937,7 +981,9 @@ const loadSchedule = async () => {
 
 // 生命週期
 onMounted(async () => {
+  console.log('[Scheduling-index] onMounted 開始')
   await loadBaseData()
+  console.log('[Scheduling-index] loadBaseData 完成，productCodes.value.length:', productCodes.value.length)
 })
 </script>
 
@@ -970,11 +1016,120 @@ onMounted(async () => {
   background-color: rgba(90, 122, 111, 0.1);
 }
 
+.scheduling-toolbar-in-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 16px;
+
+  .toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-row-head {
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+
+  .toolbar-row-actions {
+    align-items: center;
+  }
+
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-group-filter {
+    .toolbar-field-date {
+      min-width: 150px;
+      max-width: 160px;
+    }
+    .toolbar-field-shift {
+      min-width: 120px;
+      max-width: 140px;
+    }
+  }
+
+  .toolbar-group-storage {
+    flex-shrink: 0;
+  }
+
+  .toolbar-group-buttons {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .toolbar-divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(var(--v-border-color), var(--v-border-opacity));
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 599px) {
+    .toolbar-divider {
+      display: none;
+    }
+    .toolbar-row-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .toolbar-group-filter {
+      .toolbar-field-date,
+      .toolbar-field-shift {
+        min-width: 0;
+        max-width: none;
+        flex: 1;
+      }
+    }
+  }
+}
+
 .scheduling-toolbar {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--daycare-divider-light);
   padding: 18px 24px;
   box-shadow: 0 8px 24px var(--daycare-shadow-light);
+}
+
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .toolbar-btn {
+    flex: 1 1 auto;
+    min-width: 0; // 允許按鈕縮小
+  }
+
+  // 小螢幕（手機）
+  @media (max-width: 599px) {
+    .toolbar-btn {
+      flex: 1 1 calc(50% - 4px); // 每行兩個按鈕
+      min-width: 120px;
+    }
+  }
+
+  // 平板
+  @media (min-width: 600px) and (max-width: 959px) {
+    .toolbar-btn {
+      flex: 1 1 calc(50% - 4px); // 每行兩個按鈕
+    }
+  }
+
+  // 桌面
+  @media (min-width: 960px) {
+    .toolbar-btn {
+      flex: 0 1 auto; // 按內容寬度
+    }
+  }
 }
 
 .stat-card {
@@ -990,7 +1145,7 @@ onMounted(async () => {
 
 .machine-table {
   font-size: 1rem;
-  
+
   th {
     background-color: rgba(74, 107, 95, 0.08) !important;
     font-weight: 600;
@@ -1005,7 +1160,7 @@ onMounted(async () => {
 
   tbody tr {
     cursor: pointer;
-    
+
     &:hover {
       background-color: rgba(74, 107, 95, 0.04);
     }
@@ -1024,7 +1179,7 @@ onMounted(async () => {
 .stat-card--clickable {
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
@@ -1038,16 +1193,14 @@ onMounted(async () => {
 .draggable-remaining-chip {
   cursor: grab;
   transition: all 0.2s ease;
-  
+
   &:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   }
-  
+
   &:active {
     cursor: grabbing;
   }
 }
-
 </style>
-

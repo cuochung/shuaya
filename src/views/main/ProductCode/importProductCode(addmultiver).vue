@@ -135,29 +135,10 @@ const fileRules = [
   v => !v || v.size < 10000000 || '檔案大小不能超過 10MB',
 ]
 
-// 欄位對應 (寫入資料庫時：中文欄位 -> 英文欄位)
+// 欄位對應 (Excel 欄位名稱可能帶有空格)
 const fieldMapping = {
-  '品號': 'productCode',
-  '品名': 'productName',
-  '客戶': 'customer',
-  '鍵檔日期': 'entryDate',
-  '主機台': 'mainMachine',
-  '副機台': 'subMachine',
-  '模穴數': 'cavityCount',
-  '週期': 'cycleTime',
-  '模穴重': 'cavityWeight',
-  '廠內用料': 'internalMaterial',
-  '顏色': 'color',
-  '分類碼': 'categoryCode',
-  '有無截流塊': 'hasRunnerBlock',
-  '有分模': 'hasSplitMold',
-  '灌包件': 'gatePart',
-  '專用箱': 'specialBox',
-  '人力代碼': 'laborCodes',
-  '模具編號': 'moldNumber',
-  '替換模仁': 'replaceMoldCore',
-  '分模編號': 'splitMoldNumber',
-  '備註': 'remark',
+  '品號': '品號',
+  '人力代碼': '人力代碼',
 }
 
 // Excel 表頭欄位順序 (第5列)
@@ -452,32 +433,11 @@ const processImport = async () => {
     }
     console.log('[匯入] 清空成功，開始匯入資料...')
     
-    // 準備匯入資料 - 符合資料庫結構 (datalist 格式，欄位全部改為英文命名)
+    // 準備匯入資料
     const importData = datas.value.map((item, idx) => {
-      // console.log(`[匯入] 第${idx + 1}筆:`, item)
-      
-      // 將人力代碼陣列保持為陣列格式（在 datalist JSON 中）
-      const laborCodes = Array.isArray(item['人力代碼']) 
-        ? item['人力代碼']
-        : (item['人力代碼'] ? [item['人力代碼']] : [])
-
-      // 建立新物件，排除 NO 欄位（Excel 序號欄位）
-      const { NO, ...restItem } = item
-
-      // 依據欄位對應表，把中文欄位名稱轉成英文欄位名稱
-      const englishItem = {}
-      Object.entries(restItem).forEach(([key, value]) => {
-        const mappedKey = fieldMapping[key] || key
-        englishItem[mappedKey] = value
-      })
-
-      // 確保人力代碼欄位使用英文 key，且為陣列格式
-      const laborKey = fieldMapping['人力代碼'] || 'laborCodes'
-      englishItem[laborKey] = laborCodes
-
-      // 將所有資料打包到 datalist 欄位（符合資料庫結構）
-      const datalistContent = {
-        ...englishItem,
+      console.log(`[匯入] 第${idx + 1}筆:`, item)
+      return {
+        ...item,
         createInfo: {
           snkey: store.state.pData?.snkey || '',
           name: store.state.pData?.username || '',
@@ -485,33 +445,40 @@ const processImport = async () => {
         },
         editInfo: []
       }
-      
-      return {
-        datalist: JSON.stringify(datalistContent)  // 轉換為 JSON 字串
-      }
     })
 
     console.log('[匯入] 準備的資料:', importData)
 
-    // 呼叫 Rust 伺服器 API
-    console.log('[匯入] 準備發送至 Rust 伺服器，sheetName: productcode, data 筆數:', importData.length)
-    const rs = await api.rustAddMulti('productcode', importData)
-    console.log('[匯入] Rust API 回應:', rs)
+    // 轉換為 datalist 格式
+    const postDataArray = importData.map(item => ({
+      datalist: JSON.stringify(item)
+    }))
+    console.log('[匯入] postDataArray:', postDataArray)
 
-    // 判斷回應結果
-    if (rs.ok && rs.rowsInserted > 0) {
+    // 批次新增
+    // const postData = {
+    //   datalist: JSON.stringify(postDataArray)
+    // }
+
+    console.log('[匯入] 準備發送資料:', postDataArray)
+    const rs = await api.addMulti('productcode', postDataArray)
+    console.log('[匯入] API 回應:', rs)
+
+    // 判斷回傳陣列中是否全部都是 state: true
+    const allSuccess = Array.isArray(rs) && rs.every(item => item.state === true)
+    const failedCount = Array.isArray(rs) ? rs.filter(item => item.state !== true).length : 0
+
+    if (allSuccess) {
       proxy.$swal({
         icon: "success",
-        title: `成功匯入 ${rs.rowsInserted} 筆品號資料`,
+        title: `成功匯入 ${datas.value.length} 筆品號資料`,
         confirmButtonText: '確定',
         confirmButtonColor: '#3085d6',
       })
       emit('getAllData')
       dialog.value = false
-    } else if (rs.ok && rs.rowsInserted === 0) {
-      errorMessage.value = '匯入成功但沒有資料被寫入'
     } else {
-      errorMessage.value = `匯入失敗: ${JSON.stringify(rs)}`
+      errorMessage.value = `匯入失敗: ${failedCount} 筆失敗，回應: ${JSON.stringify(rs)}`
     }
   } catch (error) {
     console.error('Import error:', error)

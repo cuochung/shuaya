@@ -57,7 +57,6 @@
                       <th class="text-left"></th>
                       <th class="text-left">機台編號</th>
                       <th class="text-left">機台名稱</th>
-                      <th class="text-left">生產優先</th>
                       <th class="text-left">週邊機台</th>
                       <th class="text-left">創建紀錄</th>
                       <th class="text-left">修改紀錄</th>
@@ -84,11 +83,6 @@
                       </td>
                       <td>{{ item.raw.機台編號 }}</td>
                       <td>{{ item.raw.機台名稱 }}</td>
-                      <td>
-                        <v-chip :color="getPriorityColor(item.raw.生產優先)" size="small" variant="flat">
-                          {{ item.raw.生產優先 }}
-                        </v-chip>
-                      </td>
                       <td>
                         <div v-if="item.raw.週邊機台 && item.raw.週邊機台.length > 0">
                           <v-chip v-for="(snkey, idx) in item.raw.週邊機台" :key="idx" size="small" color="secondary"
@@ -218,18 +212,6 @@ const del = async (item) => {
       }
     }
   })
-}
-
-const getPriorityColor = (priority) => {
-  const colorMap = {
-    '方塊': 'red',
-    '大圈': 'orange',
-    '小圈': 'yellow-darken-2',
-    '大三角': 'light-green',
-    '小三角': 'light-blue',
-    '空白': 'grey'
-  }
-  return colorMap[priority] || 'grey'
 }
 
 const getMachineName = (snkey) => {

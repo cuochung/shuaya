@@ -7,13 +7,13 @@ import { parseLaborCode } from '@/utils/laborCodeParser'
 import { sortByPriority } from '@/utils/prioritySorter'
 
 /**
- * 生成排班結果
+ * 生成排班結果（新資料結構：支援多品號）
  * @param {string} date - 日期 (YYYY-MM-DD)
  * @param {string} shift - 時段 ('早'|'中上'|'中下'|'晚')
  * @param {Array<Object>} machines - 機台陣列
  * @param {Array<Object>} operators - 操作人員陣列
  * @param {Array<Object>} productCodes - 品號陣列
- * @returns {Array<Object>} - 排班結果陣列
+ * @returns {Array<Object>} - 排班結果陣列（新格式：包含 products 陣列）
  */
 export async function generateSchedule(date, shift, machines, operators, productCodes) {
   // 1. 按優先級排序機台
@@ -30,7 +30,7 @@ export async function generateSchedule(date, shift, machines, operators, product
     return true
   })
   
-  console.log('可用操作人員數量:', availableOperators.length, availableOperators.map(op => op.人員名稱))
+  console.log('[排班服務] 可用操作人員數量:', availableOperators.length, availableOperators.map(op => op.人員名稱))
 
   // 建立已分配人員的追蹤
   const assignedOperators = new Set()
@@ -39,7 +39,7 @@ export async function generateSchedule(date, shift, machines, operators, product
   // key: 人力代碼, value: { operators: [], machineCount: 0, maxMachines: 3 }
   const sharedLaborGroups = new Map()
 
-  // 儲存排班結果
+  // 儲存排班結果（新格式）
   const scheduleResults = []
 
   // 3. 對每個機台進行排班
@@ -49,39 +49,46 @@ export async function generateSchedule(date, shift, machines, operators, product
     const inputLaborCode = machine.人力代碼 || ''
     const inputRemark = machine.備註 || ''
 
+    // 新資料結構：機台層級
     const scheduleResult = {
       date,
       shift,
       machineSnkey: machine.snkey,
-      機台編號: machine.機台編號 || '',
-      機台名稱: machine.機台名稱,
-      執行品號: inputProductCode,
-      生產優先: machine.生產優先,
-      operatorSnkeys: [],
-      操作人員名稱: [],
-      人力代碼: inputLaborCode,
-      狀態: '待排',
-      備註: inputRemark
+      machineNumber: machine.機台編號 || '',
+      machineName: machine.機台名稱,
+      products: [] // 品號陣列（新格式）
+    }
+    
+    // 品號層級的物件
+    const productItem = {
+      productCode: inputProductCode,
+      priority: machine.生產優先,
+      laborCode: inputLaborCode,
+      operators: [], // 操作人員陣列（新格式：物件陣列）
+      status: '待排',
+      remark: inputRemark
     }
 
     // 如果沒有品號，跳過此機台
     if (!inputProductCode) {
-      scheduleResult.狀態 = '無品號'
+      productItem.status = '無品號'
+      scheduleResult.products.push(productItem)
       scheduleResults.push(scheduleResult)
       continue
     }
 
-    // 取得人力代碼 (優先使用已設定的，否則從品號資料庫查詢)
+    // 取得人力代碼 (優先使用已設定的，否則從品號資料庫查詢；使用英文欄位)
     let laborCode = inputLaborCode
     if (!laborCode) {
-      const productCodeData = productCodes.find(pc => pc.品號 === inputProductCode)
-      if (!productCodeData || !productCodeData.人力代碼 || productCodeData.人力代碼.length === 0) {
-        scheduleResult.狀態 = '無人力代碼'
+      const productCodeData = productCodes.find(pc => pc.productCode === inputProductCode)
+      if (!productCodeData || !productCodeData.laborCodes || productCodeData.laborCodes.length === 0) {
+        productItem.status = '無人力代碼'
+        scheduleResult.products.push(productItem)
         scheduleResults.push(scheduleResult)
         continue
       }
-      laborCode = productCodeData.人力代碼[0]
-      scheduleResult.人力代碼 = laborCode
+      laborCode = productCodeData.laborCodes[0]
+      productItem.laborCode = laborCode
     }
 
     // 解析人力代碼，取得需要的人數
@@ -89,8 +96,9 @@ export async function generateSchedule(date, shift, machines, operators, product
 
     // 如果是全自動，不需要人
     if (laborInfo.type === 'auto') {
-      scheduleResult.狀態 = '自動'
-      scheduleResult.備註 = inputRemark || '全自動運行，無需人力'
+      productItem.status = '自動'
+      productItem.remark = inputRemark || '全自動運行，無需人力'
+      scheduleResult.products.push(productItem)
       scheduleResults.push(scheduleResult)
       continue
     }
@@ -98,12 +106,12 @@ export async function generateSchedule(date, shift, machines, operators, product
     // 需要的人數
     const requiredCount = laborInfo.count
     
-    // 處理「自12」類型：2人可操作3機台 (共享人力)
+    // 處理「自12」類型：2人可操作3機台 (共享人力)；依週邊機台判斷中間機台，中間雙人、兩端各一人
     if (laborInfo.type === 'semi-auto' && laborInfo.machines > 1) {
-      const groupKey = laborCode // 使用人力代碼作為群組 key
-      
+      const groupKey = laborCode
+      const maxMachines = laborInfo.machines
+
       if (!sharedLaborGroups.has(groupKey)) {
-        // 第一台機台，需要找新的操作人員
         const matchedOperators = findBestOperators(
           machine,
           inputProductCode,
@@ -113,53 +121,38 @@ export async function generateSchedule(date, shift, machines, operators, product
           sortedMachines,
           productCodes
         )
-        
         if (matchedOperators.length >= requiredCount) {
-          // 建立新群組
           sharedLaborGroups.set(groupKey, {
             operators: matchedOperators,
             machineCount: 1,
-            maxMachines: laborInfo.machines
+            maxMachines,
+            pending: [{ machine, productItem }]
           })
-          
-          scheduleResult.operatorSnkeys = matchedOperators.map(op => op.snkey)
-          scheduleResult.操作人員名稱 = matchedOperators.map(op => op.人員名稱)
-          scheduleResult.狀態 = '已排'
-          scheduleResult.備註 = inputRemark ? `${inputRemark} | ${laborCode}: 共享人力 (1/${laborInfo.machines})` : `${laborCode}: 共享人力 (1/${laborInfo.machines})`
-          
-          // 標記為已分配
+          productItem.status = '已排'
+          productItem.remark = inputRemark ? `${inputRemark} | ${laborCode}: 共享人力 (1/${maxMachines})` : `${laborCode}: 共享人力 (1/${maxMachines})`
           matchedOperators.forEach(op => assignedOperators.add(op.snkey))
         } else if (matchedOperators.length > 0) {
-          scheduleResult.operatorSnkeys = matchedOperators.map(op => op.snkey)
-          scheduleResult.操作人員名稱 = matchedOperators.map(op => op.人員名稱)
-          scheduleResult.狀態 = '人力不足'
-          scheduleResult.備註 = inputRemark || `需要${requiredCount}人，目前僅${matchedOperators.length}人`
+          productItem.operators = matchedOperators.map(op => opToOperatorItem(op))
+          productItem.status = '人力不足'
+          productItem.remark = inputRemark || `需要${requiredCount}人，目前僅${matchedOperators.length}人`
           matchedOperators.forEach(op => assignedOperators.add(op.snkey))
         } else {
-          scheduleResult.狀態 = '無可用人力'
-          scheduleResult.備註 = inputRemark || `需要${requiredCount}人，但無可用人力`
+          productItem.status = '無可用人力'
+          productItem.remark = inputRemark || `需要${requiredCount}人，但無可用人力`
         }
       } else {
-        // 已有群組，檢查是否還能加入
         const group = sharedLaborGroups.get(groupKey)
-        
         if (group.machineCount < group.maxMachines) {
-          // 可以共享同一組人
           group.machineCount++
-          
-          scheduleResult.operatorSnkeys = group.operators.map(op => op.snkey)
-          scheduleResult.操作人員名稱 = group.operators.map(op => op.人員名稱)
-          scheduleResult.狀態 = '已排'
-          scheduleResult.備註 = inputRemark ? `${inputRemark} | ${laborCode}: 共享人力 (${group.machineCount}/${group.maxMachines})` : `${laborCode}: 共享人力 (${group.machineCount}/${group.maxMachines})`
-          
-          // 如果達到上限，重置群組讓下一批機台找新的人
-          if (group.machineCount >= group.maxMachines) {
+          group.pending.push({ machine, productItem })
+          productItem.status = '已排'
+          productItem.remark = inputRemark ? `${inputRemark} | ${laborCode}: 共享人力 (${group.machineCount}/${maxMachines})` : `${laborCode}: 共享人力 (${group.machineCount}/${maxMachines})`
+          if (group.machineCount === 3) {
+            assignSelf12Group(group)
             sharedLaborGroups.delete(groupKey)
           }
         } else {
-          // 超過上限，需要找新的一組人
           sharedLaborGroups.delete(groupKey)
-          
           const matchedOperators = findBestOperators(
             machine,
             inputProductCode,
@@ -169,33 +162,28 @@ export async function generateSchedule(date, shift, machines, operators, product
             sortedMachines,
             productCodes
           )
-          
           if (matchedOperators.length >= requiredCount) {
             sharedLaborGroups.set(groupKey, {
               operators: matchedOperators,
               machineCount: 1,
-              maxMachines: laborInfo.machines
+              maxMachines,
+              pending: [{ machine, productItem }]
             })
-            
-            scheduleResult.operatorSnkeys = matchedOperators.map(op => op.snkey)
-            scheduleResult.操作人員名稱 = matchedOperators.map(op => op.人員名稱)
-            scheduleResult.狀態 = '已排'
-            scheduleResult.備註 = inputRemark ? `${inputRemark} | ${laborCode}: 共享人力 (1/${laborInfo.machines})` : `${laborCode}: 共享人力 (1/${laborInfo.machines})`
-            
+            productItem.status = '已排'
+            productItem.remark = inputRemark ? `${inputRemark} | ${laborCode}: 共享人力 (1/${maxMachines})` : `${laborCode}: 共享人力 (1/${maxMachines})`
             matchedOperators.forEach(op => assignedOperators.add(op.snkey))
           } else if (matchedOperators.length > 0) {
-            scheduleResult.operatorSnkeys = matchedOperators.map(op => op.snkey)
-            scheduleResult.操作人員名稱 = matchedOperators.map(op => op.人員名稱)
-            scheduleResult.狀態 = '人力不足'
-            scheduleResult.備註 = inputRemark || `需要${requiredCount}人，目前僅${matchedOperators.length}人`
+            productItem.operators = matchedOperators.map(op => opToOperatorItem(op))
+            productItem.status = '人力不足'
+            productItem.remark = inputRemark || `需要${requiredCount}人，目前僅${matchedOperators.length}人`
             matchedOperators.forEach(op => assignedOperators.add(op.snkey))
           } else {
-            scheduleResult.狀態 = '無可用人力'
-            scheduleResult.備註 = inputRemark || `需要${requiredCount}人，但無可用人力`
+            productItem.status = '無可用人力'
+            productItem.remark = inputRemark || `需要${requiredCount}人，但無可用人力`
           }
         }
       }
-      
+      scheduleResult.products.push(productItem)
       scheduleResults.push(scheduleResult)
       continue
     }
@@ -213,31 +201,114 @@ export async function generateSchedule(date, shift, machines, operators, product
 
     if (matchedOperators.length >= requiredCount) {
       // 分配成功
-      scheduleResult.operatorSnkeys = matchedOperators.map(op => op.snkey)
-      scheduleResult.操作人員名稱 = matchedOperators.map(op => op.人員名稱)
-      scheduleResult.狀態 = '已排'
+      productItem.operators = matchedOperators.map(op => ({
+        snkey: op.snkey,
+        name: op.人員名稱,
+        startTime: '',
+        endTime: ''
+      }))
+      productItem.status = '已排'
       
       // 標記為已分配
       matchedOperators.forEach(op => assignedOperators.add(op.snkey))
     } else if (matchedOperators.length > 0) {
       // 部分分配
-      scheduleResult.operatorSnkeys = matchedOperators.map(op => op.snkey)
-      scheduleResult.操作人員名稱 = matchedOperators.map(op => op.人員名稱)
-      scheduleResult.狀態 = '人力不足'
-      scheduleResult.備註 = inputRemark || `需要${requiredCount}人，目前僅${matchedOperators.length}人`
+      productItem.operators = matchedOperators.map(op => ({
+        snkey: op.snkey,
+        name: op.人員名稱,
+        startTime: '',
+        endTime: ''
+      }))
+      productItem.status = '人力不足'
+      productItem.remark = inputRemark || `需要${requiredCount}人，目前僅${matchedOperators.length}人`
       
       // 標記為已分配
       matchedOperators.forEach(op => assignedOperators.add(op.snkey))
     } else {
       // 無法分配
-      scheduleResult.狀態 = '無可用人力'
-      scheduleResult.備註 = inputRemark || `需要${requiredCount}人，但無可用人力`
+      productItem.status = '無可用人力'
+      productItem.remark = inputRemark || `需要${requiredCount}人，但無可用人力`
     }
 
+    scheduleResult.products.push(productItem)
     scheduleResults.push(scheduleResult)
   }
 
+  // 迴圈結束後，對未滿 3 台的自12 群組做整組寫入（兩台或一台都給整組 2 人）
+  for (const [, group] of sharedLaborGroups) {
+    if (group.pending && group.pending.length > 0) {
+      flushIncompleteSelf12Group(group)
+    }
+  }
+
+  console.log('[排班服務] 產生的排班結果（新格式）:', scheduleResults)
   return scheduleResults
+}
+
+/**
+ * 自12 群組：找出「中間機台」索引（週邊機台包含另外兩台 snkey 的那一台）
+ * @param {Array<{ machine: Object, productItem: Object }>} pending - 長度 3
+ * @returns {number} middleIdx 0、1 或 2；若無符合則回傳 -1
+ */
+function findMiddleIndexInSelf12Group(pending) {
+  if (!pending || pending.length !== 3) return -1
+  const snkeys = pending.map(p => p.machine.snkey)
+  for (let i = 0; i < 3; i++) {
+    const adj = pending[i].machine.週邊機台 || []
+    const otherSnkeys = snkeys.filter((_, j) => j !== i)
+    if (otherSnkeys.length === 2 && otherSnkeys.every(s => adj.includes(s))) return i
+  }
+  return -1
+}
+
+/**
+ * 將 operator 轉成新格式單人陣列
+ */
+function opToOperatorItem(op) {
+  return { snkey: op.snkey, name: op.人員名稱, startTime: '', endTime: '' }
+}
+
+/**
+ * 自12 群組滿 3 台時：依中間／兩端寫入 productItem.operators
+ * 兩端：第一端 [op0]、第二端 [op1]；中間：[op0, op1]
+ */
+function assignSelf12Group(group) {
+  const { operators, pending } = group
+  if (!pending || pending.length !== 3 || !operators || operators.length < 2) return
+  const op0 = operators[0]
+  const op1 = operators[1]
+  const middleIdx = findMiddleIndexInSelf12Group(pending)
+  const laborCode = pending[0].productItem.laborCode || '自12'
+  const maxMachines = 3
+  if (middleIdx === -1) {
+    // fallback：無符合中間機台時，三台都給整組 2 人
+    pending.forEach((p, idx) => {
+      p.productItem.operators = [opToOperatorItem(op0), opToOperatorItem(op1)]
+      p.productItem.remark = p.productItem.remark || `${laborCode}: 共享人力 (${idx + 1}/${maxMachines})`
+    })
+    return
+  }
+  const ends = [0, 1, 2].filter(i => i !== middleIdx)
+  pending[ends[0]].productItem.operators = [opToOperatorItem(op0)]
+  pending[ends[0]].productItem.remark = pending[ends[0]].productItem.remark || `${laborCode}: 共享人力-兩端 (${ends[0] + 1}/${maxMachines})`
+  pending[ends[1]].productItem.operators = [opToOperatorItem(op1)]
+  pending[ends[1]].productItem.remark = pending[ends[1]].productItem.remark || `${laborCode}: 共享人力-兩端 (${ends[1] + 1}/${maxMachines})`
+  pending[middleIdx].productItem.operators = [opToOperatorItem(op0), opToOperatorItem(op1)]
+  pending[middleIdx].productItem.remark = pending[middleIdx].productItem.remark || `${laborCode}: 共享人力-中間 (雙人操作)`
+}
+
+/**
+ * 自12 群組未滿 3 台時：每台都寫入整組 2 人
+ */
+function flushIncompleteSelf12Group(group) {
+  const { operators, pending } = group
+  if (!pending || pending.length === 0 || !operators) return
+  const laborCode = pending[0].productItem.laborCode || '自12'
+  pending.forEach((p, idx) => {
+    p.productItem.operators = operators.map(op => opToOperatorItem(op))
+    p.productItem.status = '已排'
+    p.productItem.remark = p.productItem.remark || `${laborCode}: 共享人力 (${idx + 1}/${pending.length})`
+  })
 }
 
 /**
@@ -336,8 +407,8 @@ function hasConflict(operator, machine, assignedOperators, allMachines) {
 }
 
 /**
- * 驗證排班結果
- * @param {Array<Object>} scheduleResults - 排班結果
+ * 驗證排班結果（新資料結構）
+ * @param {Array<Object>} scheduleResults - 排班結果（新格式）
  * @returns {Object} - 驗證結果 { valid: boolean, errors: Array<string> }
  */
 export function validateSchedule(scheduleResults) {
@@ -347,12 +418,18 @@ export function validateSchedule(scheduleResults) {
   const assignedOperators = new Map()
   
   scheduleResults.forEach((result, index) => {
-    if (result.operatorSnkeys && result.operatorSnkeys.length > 0) {
-      result.operatorSnkeys.forEach(snkey => {
-        if (assignedOperators.has(snkey)) {
-          errors.push(`人員 ${snkey} 被重複分配到機台 ${assignedOperators.get(snkey)} 和 ${result.機台名稱}`)
-        } else {
-          assignedOperators.set(snkey, result.機台名稱)
+    // 新格式：遍歷 products 陣列
+    if (result.products && result.products.length > 0) {
+      result.products.forEach((product, productIndex) => {
+        if (product.operators && product.operators.length > 0) {
+          product.operators.forEach(op => {
+            if (assignedOperators.has(op.snkey)) {
+              const prevAssignment = assignedOperators.get(op.snkey)
+              errors.push(`人員 ${op.name} 被重複分配到機台 ${prevAssignment} 和 ${result.machineName} (品號: ${product.productCode})`)
+            } else {
+              assignedOperators.set(op.snkey, `${result.machineName} (品號: ${product.productCode})`)
+            }
+          })
         }
       })
     }
@@ -365,8 +442,8 @@ export function validateSchedule(scheduleResults) {
 }
 
 /**
- * 取得排班統計
- * @param {Array<Object>} scheduleResults - 排班結果
+ * 取得排班統計（新資料結構）
+ * @param {Array<Object>} scheduleResults - 排班結果（新格式）
  * @returns {Object} - 統計資訊
  */
 export function getScheduleStatistics(scheduleResults, availableOperatorCount = 0) {
@@ -387,10 +464,17 @@ export function getScheduleStatistics(scheduleResults, availableOperatorCount = 
   const assignedOperators = new Set()
 
   scheduleResults.forEach(result => {
-    stats[result.狀態] = (stats[result.狀態] || 0) + 1
-    
-    if (result.operatorSnkeys && result.operatorSnkeys.length > 0) {
-      result.operatorSnkeys.forEach(snkey => assignedOperators.add(snkey))
+    // 新格式：遍歷 products 陣列
+    if (result.products && result.products.length > 0) {
+      result.products.forEach(product => {
+        // 統計狀態
+        stats[product.status] = (stats[product.status] || 0) + 1
+        
+        // 統計已分配人員
+        if (product.operators && product.operators.length > 0) {
+          product.operators.forEach(op => assignedOperators.add(op.snkey))
+        }
+      })
     }
   })
 

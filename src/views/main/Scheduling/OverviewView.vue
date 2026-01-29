@@ -136,57 +136,15 @@
       </v-card>
     </v-dialog>
 
-    <!-- 快速編輯對話框 -->
-    <v-dialog v-model="editDialog" max-width="600px">
-      <v-card>
-        <v-card-title class="dialog-title">
-          <span>編輯排班 - {{ editingItem?.機台名稱 }} ({{ editingItem?.shift }})</span>
-        </v-card-title>
-        <v-card-text class="pt-4">
-          <v-row>
-            <v-col cols="12">
-              <v-text-field label="品號" v-model="editingItem.執行品號" readonly density="comfortable"
-                variant="outlined"></v-text-field>
-            </v-col>
-            <v-col cols="12">
-              <div class="text-body-2 mb-2">操作人員</div>
-              <div v-for="(operator, idx) in editingItem.操作人員列表" :key="idx" class="mb-3 pa-3" style="border: 1px solid rgba(0,0,0,0.12); border-radius: 8px;">
-                <div class="d-flex align-center justify-space-between mb-2">
-                  <v-chip size="default" color="indigo" variant="flat">
-                    <v-icon start size="small">mdi-account</v-icon>
-                    {{ operator.name }}
-                  </v-chip>
-                  <v-btn icon="mdi-close" size="x-small" variant="text" @click="removeOperator(idx)"></v-btn>
-                </div>
-                <v-row>
-                  <v-col cols="6">
-                    <v-text-field label="開始時間" v-model="operator.startTime" type="time" density="comfortable"
-                      variant="outlined" hide-details></v-text-field>
-                  </v-col>
-                  <v-col cols="6">
-                    <v-text-field label="結束時間" v-model="operator.endTime" type="time" density="comfortable"
-                      variant="outlined" hide-details></v-text-field>
-                  </v-col>
-                </v-row>
-              </div>
-              <v-autocomplete label="新增操作人員" :items="availableOperatorNames" v-model="newOperatorName"
-                @update:model-value="(val) => { if (val) { addOperator(val); newOperatorName = null } }" 
-                density="comfortable" variant="outlined" clearable>
-              </v-autocomplete>
-            </v-col>
-            <v-col cols="12">
-              <v-textarea label="備註" v-model="editingItem.備註" density="comfortable" variant="outlined" rows="3">
-              </v-textarea>
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="editDialog = false">取消</v-btn>
-          <v-btn color="primary" variant="flat" @click="saveEdit">儲存</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- 共用編輯排班對話框 -->
+    <schedule-edit-dialog
+      v-model="editDialog"
+      :editing-item="editingItem"
+      :product-codes="productCodes"
+      :operators="operators"
+      @save="handleEditSave"
+      @cancel="editDialog = false"
+    />
   </div>
 </template>
 
@@ -195,6 +153,8 @@ import { ref, computed, onMounted } from 'vue'
 import api from '@/assets/js/api.js'
 import { useStore } from '@/stores/useStore'
 import dayjs from 'dayjs'
+import { convertBatchToNew, convertNewToOld } from '@/utils/scheduleDataAdapter'
+import ScheduleEditDialog from './ScheduleEditDialog.vue'
 
 const store = useStore()
 
@@ -211,6 +171,11 @@ const props = defineProps({
   operators: {
     type: Array,
     default: () => []
+  },
+  // 傳入品號資料，供編輯時選擇品號用
+  productCodes: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -219,6 +184,9 @@ const emit = defineEmits(['update'])
 
 // 響應式數據
 const loading = ref(false)
+// allScheduleNew：新格式（含 products 陣列，與 TableView / ListView 相同）
+const allScheduleNew = ref([])
+// allScheduleData：舊格式（供現有畫面與拖拉邏輯使用）
 const allScheduleData = ref([])
 const shiftOptions = ['早', '中上', '中下', '晚']
 const dragData = ref(null)
@@ -228,12 +196,11 @@ const dropAction = ref('move')
 const pendingDropData = ref(null)
 const editDialog = ref(false)
 const editingItem = ref(null)
-const newOperatorName = ref(null)
 
 // 從載入的資料中取得實際日期
 const actualDate = computed(() => {
-  if (allScheduleData.value.length > 0 && allScheduleData.value[0].date) {
-    return allScheduleData.value[0].date
+  if (allScheduleNew.value.length > 0 && allScheduleNew.value[0].date) {
+    return allScheduleNew.value[0].date
   }
   return props.selectedDate || ''
 })
@@ -245,36 +212,53 @@ const loadAllShifts = async () => {
     const rs = await api.get('schedule')
     if (rs && rs.length > 0) {
       // 過濾出符合日期的所有排班
-      allScheduleData.value = rs
+      let filtered = rs
         .map(i => ({
           ...JSON.parse(i.datalist),
           snkey: i.snkey
         }))
         .filter(item => item.date === props.selectedDate)
+      
+      if (filtered.length > 0) {
+        // 先轉換為新格式（統一結構）
+        console.log('[OverviewView-loadAllShifts] 讀取到的資料:', filtered)
+        const newFormatData = convertBatchToNew(filtered)
+        console.log('[OverviewView-loadAllShifts] 轉換為新格式後:', newFormatData)
+        allScheduleNew.value = newFormatData
+        // 再轉成舊格式供既有畫面 / 拖拉邏輯使用
+        allScheduleData.value = newFormatData.map(convertNewToOld)
+        console.log('[OverviewView-loadAllShifts] 轉換為舊格式後:', allScheduleData.value)
+      } else {
+        allScheduleNew.value = []
+        allScheduleData.value = []
+      }
     } else {
+      allScheduleNew.value = []
       allScheduleData.value = []
     }
   } catch (error) {
     console.error('載入排班錯誤:', error)
+    allScheduleNew.value = []
+    allScheduleData.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 取得特定時段和機台的排班資料
+// 取得特定時段和機台的排班資料（舊格式，供畫面與拖拉使用）
 const getScheduleData = (shift, machineSnkey) => {
   return allScheduleData.value.find(
     item => item.shift === shift && item.machineSnkey === machineSnkey
   )
 }
 
-// 可用操作人員名稱（從 props.operators 獲取所有操作人員）
-const availableOperatorNames = computed(() => {
-  if (props.operators && props.operators.length > 0) {
-    return props.operators.map(op => op.人員名稱 || op.名稱).filter(Boolean)
-  }
-  return []
-})
+// 取得新格式資料（含 products），供「編輯排班」使用
+const getScheduleDataNew = (shift, machineSnkey) => {
+  return allScheduleNew.value.find(
+    item => item.shift === shift && item.machineSnkey === machineSnkey
+  )
+}
+
 
 const getShiftColor = (shift) => {
   const colorMap = {
@@ -431,6 +415,7 @@ const onRemoveZoneDrop = async (event) => {
   
   dragData.value = null
 }
+
 
 const onDragOver = (event) => {
   event.currentTarget.classList.add('drag-over')
@@ -621,122 +606,40 @@ const cancelDrop = () => {
   dragData.value = null
 }
 
-// 編輯相關方法
+// 編輯相關方法（使用共用組件）
 const editItem = (shift, machineSnkey) => {
-  const scheduleData = getScheduleData(shift, machineSnkey)
-  if (scheduleData) {
-    editingItem.value = { ...scheduleData, shift, machineSnkey }
-    
-    // 初始化操作人員列表（如果不存在）
-    if (!editingItem.value.操作人員列表) {
-      editingItem.value.操作人員列表 = []
-      if (editingItem.value.操作人員名稱 && editingItem.value.操作人員名稱.length > 0) {
-        editingItem.value.操作人員名稱.forEach((name, idx) => {
-          const snkey = editingItem.value.operatorSnkeys && editingItem.value.operatorSnkeys[idx] 
-            ? editingItem.value.operatorSnkeys[idx] 
-            : null
-          editingItem.value.操作人員列表.push({
-            name,
-            snkey,
-            startTime: editingItem.value.操作人員時間 && editingItem.value.操作人員時間[idx] 
-              ? editingItem.value.操作人員時間[idx].startTime || '' 
-              : '',
-            endTime: editingItem.value.操作人員時間 && editingItem.value.操作人員時間[idx] 
-              ? editingItem.value.操作人員時間[idx].endTime || '' 
-              : ''
-          })
-        })
-      }
-    }
-    
-    editDialog.value = true
-  }
+  const scheduleNew = getScheduleDataNew(shift, machineSnkey)
+  if (!scheduleNew) return
+
+  // 深拷貝避免直接改到原資料
+  editingItem.value = JSON.parse(JSON.stringify(scheduleNew))
+  console.log('[OverviewView-editItem] 編輯資料（新格式）:', editingItem.value)
+  editDialog.value = true
 }
 
-// 新增操作人員
-const addOperator = (name) => {
-  if (!name || !editingItem.value) return
-  
-  // 檢查是否已存在
-  if (editingItem.value.操作人員列表.some(op => op.name === name)) {
-    return
-  }
-  
-  const operator = props.operators.find(op => (op.人員名稱 || op.名稱) === name)
-  editingItem.value.操作人員列表.push({
-    name,
-    snkey: operator ? operator.snkey : null,
-    startTime: '',
-    endTime: ''
-  })
-}
+// 處理編輯儲存（從共用組件回傳）
+const handleEditSave = (dataToSave) => {
+  console.log('[OverviewView-handleEditSave] 收到儲存資料:', dataToSave)
 
-// 移除操作人員
-const removeOperator = (idx) => {
-  if (editingItem.value && editingItem.value.操作人員列表) {
-    editingItem.value.操作人員列表.splice(idx, 1)
-  }
-}
-
-const saveEdit = async () => {
-  if (!editingItem.value) return
-  
-  // 從操作人員列表轉換為操作人員名稱和operatorSnkeys
-  if (editingItem.value.操作人員列表 && editingItem.value.操作人員列表.length > 0) {
-    editingItem.value.操作人員名稱 = editingItem.value.操作人員列表.map(op => op.name)
-    editingItem.value.operatorSnkeys = editingItem.value.操作人員列表.map(op => op.snkey).filter(Boolean)
-    editingItem.value.操作人員時間 = editingItem.value.操作人員列表.map(op => ({
-      startTime: op.startTime || '',
-      endTime: op.endTime || ''
-    }))
-  } else {
-    editingItem.value.操作人員名稱 = []
-    editingItem.value.operatorSnkeys = []
-    editingItem.value.操作人員時間 = []
-  }
-  
-  // 更新狀態：根據操作人員數量
-  if (!editingItem.value.操作人員名稱 || editingItem.value.操作人員名稱.length === 0) {
-    editingItem.value.狀態 = '待排'
-  } else if (editingItem.value.狀態 === '待排' || editingItem.value.狀態 === '無可用人力' || editingItem.value.狀態 === '人力不足') {
-    editingItem.value.狀態 = '已排'
-  }
-  
-  // 更新本地資料
-  const index = allScheduleData.value.findIndex(
-    item => item.shift === editingItem.value.shift && item.machineSnkey === editingItem.value.machineSnkey
+  // 更新本地的新格式陣列
+  const idxNew = allScheduleNew.value.findIndex(
+    r => r.machineSnkey === dataToSave.machineSnkey && r.shift === dataToSave.shift
   )
-  if (index !== -1) {
-    allScheduleData.value[index] = { ...editingItem.value }
+  if (idxNew !== -1) {
+    Object.assign(allScheduleNew.value[idxNew], dataToSave)
   }
-  
-  // 透過 API 更新資料庫
-  if (editingItem.value.snkey) {
-    console.log('--- [總覽-編輯儲存] 開始更新 ---')
-    console.log('時段:', editingItem.value.shift, ', 機台:', editingItem.value.機台名稱, ', snkey:', editingItem.value.snkey)
-    try {
-      const payload = {
-        snkey: editingItem.value.snkey,
-        datalist: JSON.stringify({
-          ...editingItem.value,
-          editInfo: [...(editingItem.value.editInfo || []), {
-            name: store.state.pData?.username || 'system',
-            time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-            action: '編輯排班'
-          }]
-        })
-      }
-      console.log('[總覽-編輯儲存] POST payload:', payload)
-      const rs = await api.post('schedule', payload)
-      console.log('[總覽-編輯儲存] POST 結果:', rs)
-      console.log('--- [總覽-編輯儲存] 更新完成 ---')
-    } catch (error) {
-      console.error('[總覽-編輯儲存] 更新失敗:', error)
-    }
+
+  // 同步更新舊格式陣列，供畫面 / 拖拉使用
+  const convertedOld = convertNewToOld(dataToSave)
+  const idxOld = allScheduleData.value.findIndex(
+    r => r.machineSnkey === convertedOld.machineSnkey && r.shift === convertedOld.shift
+  )
+  if (idxOld !== -1) {
+    allScheduleData.value[idxOld] = convertedOld
   }
-  
-  emit('update', editingItem.value)
-  editDialog.value = false
+
+  // 通知父層更新
+  emit('update', dataToSave)
 }
 
 // 生命週期
@@ -903,5 +806,6 @@ defineExpose({
   background: linear-gradient(135deg, rgba(74, 107, 95, 0.95), rgba(123, 163, 184, 0.85));
   color: white;
 }
+
 </style>
 

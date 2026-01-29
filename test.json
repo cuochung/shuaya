@@ -1,17 +1,57 @@
 {
-    "documentNumber": "SO20251103001",
-    "customerFullName": "從頭開始",
-    "productName": "賦活金萃奇蹟面膜",
-    "unitPrice": "25",
-    "quantity": "986",
-    "amount": "23476",
-    "taxAmount": "1174",
-    "orderDate": "2025/11/03",
-    "customerNumber": "MD02066",
+    "date": "2026-01-20",
+    "shift": "早",
+    "machineSnkey": "2",
+    "machineNumber": "1",
+    "machineName": "機台1號",
+    "products": [
+        {
+            "productCode": "1005490",
+            "priority": "空白",
+            "laborCode": "自12",
+            "operators": [
+                {
+                    "snkey": "2",
+                    "name": "人員2號",
+                    "startTime": "",
+                    "endTime": ""
+                },
+                {
+                    "snkey": "3",
+                    "name": "人員3號",
+                    "startTime": "",
+                    "endTime": ""
+                }
+            ],
+            "status": "已排",
+            "remark": "自12: 共享人力 (1/3)"
+        },
+        {
+            "productCode": "00-0006771-001A(00-120055-001)",
+            "priority": "空白",
+            "laborCode": "自1",
+            "operators": [
+                {
+                    "snkey": "1",
+                    "name": "人員1號",
+                    "startTime": "",
+                    "endTime": ""
+                }
+            ],
+            "status": "已排",
+            "remark": ""
+        }
+    ],
     "createInfo": {
         "snkey": "34",
         "name": "系統管理員",
-        "time": "2025-11-18 14:24:43"
+        "time": "2026-01-20 21:53:30"
     },
-    "editInfo": []
+    "editInfo": [
+        {
+            "name": "系統管理員",
+            "time": "2026-01-20 22:36:10",
+            "action": "編輯排班"
+        }
+    ]
 }

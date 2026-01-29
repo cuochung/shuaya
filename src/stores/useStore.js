@@ -2,11 +2,17 @@ import { ref, reactive } from 'vue'
 import { defineStore } from 'pinia'
 
 export const useStore = defineStore('company', () => {
+  let setBaseUrl = 'http://localhost'; //地區測試
+  // const setBaseUrl = 'https://www.pddtvgame.com'; //線上主機
+  // const setBaseUrl = 'https://www.pddtech.online'; //線上二號機
+
   const state = {
     verMsg: "2026.01.18.1",
     databaseName: "shuaya", //資料庫名
-    // base_url: "http://localhost/shuayaapi", //localhost測試用
-    base_url: "https://www.pddtvgame.com/shuayaapi", //線上專用指定去讀圖片或其他東西的位置
+    base_url: `${setBaseUrl}/shuayaapi`, //線上專用指定去讀圖片或其他東西的位置
+
+    rustBaseURL: `${setBaseUrl}:3000`, // Rust 伺服器 baseURL
+    rustApiToken: "your-internal-secret-key", // Rust 伺服器 API Token
 
     loading: false, //載入中
 
