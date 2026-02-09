@@ -1,7 +1,7 @@
 <template>
   <div class="scheduling-main pa-6">
     <!-- 左側人員出勤 Sidebar -->
-    <AttendanceDrawer v-model="showAttendanceDrawer" :operators="operators" @updated="loadBaseData" />
+    <AttendanceDrawer v-model="showAttendanceDrawer" :operators="operators" @updated="loadOperators" />
     <v-container fluid class="pa-0">
       <!-- 標題區 -->
       <v-row>
@@ -522,7 +522,22 @@ const remainingOperators = computed(() => {
   })
 })
 
-// 方法
+// 方法：僅載入人員資料（人員出勤更新後使用，不重載機台與品號）
+const loadOperators = async () => {
+  try {
+    const operatorRs = await api.get('operator')
+    if (operatorRs && operatorRs.length > 0) {
+      operators.value = operatorRs.map(i => ({
+        ...JSON.parse(i.datalist),
+        snkey: i.snkey
+      }))
+    }
+  } catch (error) {
+    console.error('載入人員資料錯誤:', error)
+    proxy.$swal({ icon: "error", title: "載入人員資料失敗" })
+  }
+}
+
 const loadBaseData = async () => {
   try {
     // 載入機台資料
@@ -1146,8 +1161,8 @@ onMounted(async () => {
 .machine-table {
   font-size: 1rem;
 
-  th {
-    background-color: rgba(74, 107, 95, 0.08) !important;
+  thead th {
+    background-color: #f2f5f3 !important; /* 不透明表頭 */
     font-weight: 600;
     white-space: nowrap;
     font-size: 1rem;

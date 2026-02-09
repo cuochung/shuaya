@@ -2,12 +2,12 @@ import { ref, reactive } from 'vue'
 import { defineStore } from 'pinia'
 
 export const useStore = defineStore('company', () => {
-  let setBaseUrl = 'http://localhost'; //地區測試
-  // const setBaseUrl = 'https://www.pddtvgame.com'; //線上主機
+  // let setBaseUrl = 'http://localhost'; //地區測試
+  const setBaseUrl = 'https://www.pddtvgame.com'; //線上主機
   // const setBaseUrl = 'https://www.pddtech.online'; //線上二號機
 
   const state = {
-    verMsg: "2026.01.18.1",
+    verMsg: "2026.02.09.1",
     databaseName: "shuaya", //資料庫名
     base_url: `${setBaseUrl}/shuayaapi`, //線上專用指定去讀圖片或其他東西的位置
 
@@ -26,6 +26,14 @@ export const useStore = defineStore('company', () => {
     //功能名稱,樣式,key值,引用圖片,授權,icon圖片設定,
     authKeys: [
       // 排班系統選單
+      {
+        label: "排班管理", class: "ma-1 white--text", color: "indigo", keyName: 'scheduling',
+        image: new URL('@/assets/img/template_calender_j.jpg', import.meta.url).href,
+        route: "/main/Scheduling",
+        authKey: "scheduling_key",
+        icon: 'mdi-calendar-clock',
+      },
+
       {
         label: "機台管理", class: "ma-1 white--text", color: "blue-grey", keyName: 'machine',
         image: new URL('@/assets/img/building_insatsujo.png', import.meta.url).href,
@@ -47,13 +55,7 @@ export const useStore = defineStore('company', () => {
         authKey: "productcode_key",
         icon: 'mdi-barcode',
       },
-      {
-        label: "排班管理", class: "ma-1 white--text", color: "indigo", keyName: 'scheduling',
-        image: new URL('@/assets/img/template_calender_j.jpg', import.meta.url).href,
-        route: "/main/Scheduling",
-        authKey: "scheduling_key",
-        icon: 'mdi-calendar-clock',
-      },
+      
 
       {
         label: "人員管理", class: "ma-1 white--text", color: "purple", keyName: 'personnel',

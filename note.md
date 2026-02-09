@@ -1,3 +1,24 @@
+## 2026.02.09 本日修改內容
+
+### API（api.js）
+- **批次操作**：新增 `editMulti(database, data)`（修改多筆資料）、`deleteMulti(database, data)`（刪除多筆資料），分別呼叫後端 `general/editMulti/...`、`general/delMultiv3/...`。
+- 刪除舊檔 `src/assets/js/api old.js`。
+
+### 全域設定（useStore.js）
+- **Base URL**：改為線上主機 `https://www.pddtvgame.com`（原 localhost 測試改為註解）。
+- **選單順序**：將「排班管理」選單項移至「機台管理」之前（authKeys 陣列中排班管理置頂）。
+
+### 品號匯入（importProductCode.vue）
+- **匯入資料**：每筆寫入時加入 `createTime`、`updateTime`（dayjs 格式 `YYYY-MM-DD HH:mm:ss`）。
+- 說明區欄位列表與錯誤 alert 的排版微調；多處程式碼格式整理（空白、逗號、結尾空行）。
+
+### 排班頁面（Scheduling/index.vue）
+- **出勤更新回呼**：`AttendanceDrawer` 的 `@updated` 由 `loadBaseData` 改為 `loadOperators`，出勤更新後僅重載人員資料，不重載機台與品號。
+- **loadOperators**：新增方法，只呼叫 `api.get('operator')` 並更新 `operators`，供出勤抽屜更新後使用。
+- **機台表格樣式**：表頭改為 `thead th`、背景色改為不透明 `#f2f5f3`，字重與字型維持不變。
+
+---
+
 ## 2026.01.29 本日修改內容
 
 ### 排班頁面（Scheduling）

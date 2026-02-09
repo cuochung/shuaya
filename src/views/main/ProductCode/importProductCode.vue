@@ -38,7 +38,9 @@
               <ul class="text-caption">
                 <li>工作表名稱必須為：<strong>人力代碼資料表</strong></li>
                 <li>第五列為欄位標題，第六列開始為資料</li>
-                <li>欄位：NO、品號.規格、品名、客戶、鍵檔日期、主機台、副機台、模穴數、週期、模穴重、廠內用料、顏色、分類碼、有無截流塊、有分模、灌包件、專用箱、<strong>人力代碼</strong>、模具編號、替換模仁、分模編號、備註</li>
+                <li>
+                  欄位：NO、品號.規格、品名、客戶、鍵檔日期、主機台、副機台、模穴數、週期、模穴重、廠內用料、顏色、分類碼、有無截流塊、有分模、灌包件、專用箱、<strong>人力代碼</strong>、模具編號、替換模仁、分模編號、備註
+                </li>
               </ul>
             </v-alert>
           </v-sheet>
@@ -82,7 +84,8 @@
             </div>
           </v-sheet>
 
-          <v-alert v-if="errorMessage" type="error" variant="tonal" class="mt-4" closable @click:close="errorMessage = ''">
+          <v-alert v-if="errorMessage" type="error" variant="tonal" class="mt-4" closable
+            @click:close="errorMessage = ''">
             <div class="d-flex align-center">
               <v-icon class="mr-2">mdi-alert-circle</v-icon>
               <span>{{ errorMessage }}</span>
@@ -290,7 +293,7 @@ const parseExcelFile = (file) => {
             columnIndexMap['備註'] = index
           }
         })
-        
+
         console.log('[匯入] 欄位索引映射:', columnIndexMap)
 
         if (columnIndexMap['品號'] === undefined) {
@@ -389,7 +392,7 @@ const parseExcelFile = (file) => {
             allLaborCodes.push(...item['人力代碼'])
           }
         })
-        
+
         // 去除重複的人力代碼
         const uniqueLaborCodes = [...new Set(allLaborCodes)]
         console.log('========================================')
@@ -445,19 +448,19 @@ const processImport = async () => {
     console.log('[匯入] 清空 productcode 資料表...')
     const truncateRs = await api.options(`general/truncateTable/${store.state.databaseName}/productcode`)
     console.log('[匯入] 清空回應:', truncateRs)
-    
+
     if (truncateRs.state != 1) {
       errorMessage.value = `清空資料表失敗: ${truncateRs.message || truncateRs.msg || JSON.stringify(truncateRs)}`
       return
     }
     console.log('[匯入] 清空成功，開始匯入資料...')
-    
+
     // 準備匯入資料 - 符合資料庫結構 (datalist 格式，欄位全部改為英文命名)
     const importData = datas.value.map((item, idx) => {
       // console.log(`[匯入] 第${idx + 1}筆:`, item)
-      
+
       // 將人力代碼陣列保持為陣列格式（在 datalist JSON 中）
-      const laborCodes = Array.isArray(item['人力代碼']) 
+      const laborCodes = Array.isArray(item['人力代碼'])
         ? item['人力代碼']
         : (item['人力代碼'] ? [item['人力代碼']] : [])
 
@@ -485,9 +488,11 @@ const processImport = async () => {
         },
         editInfo: []
       }
-      
+
       return {
-        datalist: JSON.stringify(datalistContent)  // 轉換為 JSON 字串
+        datalist: JSON.stringify(datalistContent),  // 轉換為 JSON 字串
+        createTime: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        updateTime: dayjs().format("YYYY-MM-DD HH:mm:ss")
       }
     })
 
@@ -572,4 +577,3 @@ const getLaborCodeColor = (code) => {
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 </style>
-
