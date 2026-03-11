@@ -41,54 +41,137 @@
                   {{ shift }}
                 </v-chip>
               </td>
-              <td v-for="machine in machines" :key="machine.snkey" class="machine-cell"
-                  @dragover.prevent="onDragOver($event)"
-                  @dragleave="onDragLeave($event)"
-                  @drop="onDrop($event, shift, machine.snkey)"
-                  @click="editItem(shift, machine.snkey)">
-                <div v-if="getScheduleData(shift, machine.snkey)" class="cell-content text-no-wrap" style="cursor: pointer;">
-                  <div class="d-flex align-center mb-1">
-                    <v-icon v-if="getScheduleData(shift, machine.snkey).生產優先" 
-                      :color="getPriorityColor(getScheduleData(shift, machine.snkey).生產優先)" 
-                      size="small" class="mr-1">
-                      {{ getPriorityIcon(getScheduleData(shift, machine.snkey).生產優先) }}
-                    </v-icon>
-                    <span class="text-body-2 font-weight-bold text-primary" v-if="getScheduleData(shift, machine.snkey).執行品號">
-                      {{ getScheduleData(shift, machine.snkey).執行品號 }}
-                    </span>
-                  </div>
-                  <div class="text-caption mb-1" :class="'text-' + getLaborCodeColor(getScheduleData(shift, machine.snkey).人力代碼)" 
-                    v-if="getScheduleData(shift, machine.snkey).人力代碼">
-                    {{ getScheduleData(shift, machine.snkey).人力代碼 }}
-                  </div>
-                  <div class="operator-drop-zone">
-                    <div v-for="(name, idx) in getScheduleData(shift, machine.snkey).操作人員名稱" :key="idx" class="d-flex align-center mb-1">
-                      <v-chip size="small" color="indigo" variant="elevated" class="draggable-chip"
-                        :draggable="true"
-                        @dragstart="onDragStart($event, name, shift, machine.snkey, idx)"
-                        @dragend="onDragEnd"
-                        @click.stop>
-                        {{ name }}
-                      </v-chip>
-                      <v-chip v-if="getOperatorTime(getScheduleData(shift, machine.snkey), idx)" size="x-small" color="teal" variant="tonal" class="ml-2">
-                        <v-icon start size="x-small">mdi-clock-outline</v-icon>
-                        {{ getOperatorTime(getScheduleData(shift, machine.snkey), idx) }}
+              <td
+                v-for="machine in machines"
+                :key="machine.snkey"
+                class="machine-cell"
+              >
+                <!-- 使用新格式資料顯示多品號（以品號區塊為單位） -->
+                <div
+                  v-if="getScheduleDataNew(shift, machine.snkey)"
+                  class="cell-content text-no-wrap"
+                >
+                  <div
+                    v-for="(product, pIdx) in getScheduleDataNew(shift, machine.snkey).products"
+                    :key="`ov-${shift}-${machine.snkey}-${pIdx}`"
+                    class="product-section product-drop-zone mb-2"
+                    @dragover.prevent="onProductDragOver($event)"
+                    @dragleave="onProductDragLeave($event)"
+                    @drop.stop="onProductDrop($event, shift, machine.snkey, pIdx)"
+                    @click="!isDragging && editItem(shift, machine.snkey)"
+                  >
+                    <!-- 多品號時顯示品號序號 -->
+                    <div v-if="getScheduleDataNew(shift, machine.snkey).products.length > 1"
+                         class="d-flex align-center mb-1">
+                      <v-chip size="x-small" color="primary" variant="tonal" class="mr-1">
+                        品號 {{ pIdx + 1 }}
                       </v-chip>
                     </div>
-                  </div>
-                  <v-chip v-if="shouldShowStatus(getScheduleData(shift, machine.snkey).狀態)" size="x-small" 
-                    :color="getStatusColor(getScheduleData(shift, machine.snkey).狀態)"
-                    variant="tonal" class="mt-1">
-                    {{ getScheduleData(shift, machine.snkey).狀態 }}
-                  </v-chip>
-                  <div v-if="getScheduleData(shift, machine.snkey).備註" class="text-caption text-grey mt-1">
-                    {{ getScheduleData(shift, machine.snkey).備註 }}
+
+                    <!-- 品號 -->
+                    <div class="d-flex align-center mb-1">
+                      <v-icon size="small" class="mr-1">mdi-barcode</v-icon>
+                      <span class="text-caption">品號:</span>
+                      <span class="font-weight-medium text-primary ml-1 text-body-2">
+                        {{ product.productCode || '-' }}
+                      </span>
+                    </div>
+
+                    <!-- 優先 -->
+                    <div class="d-flex align-center mb-1">
+                      <v-icon size="small" class="mr-1">mdi-flag-variant</v-icon>
+                      <span class="text-caption">優先:</span>
+                      <v-chip v-if="product.priority" size="x-small"
+                              :color="getPriorityColor(product.priority)"
+                              variant="flat" class="ml-1">
+                        <v-icon start size="x-small">{{ getPriorityIcon(product.priority) }}</v-icon>
+                        {{ product.priority }}
+                      </v-chip>
+                      <span v-else class="text-caption text-grey ml-1">空白</span>
+                    </div>
+
+                    <!-- 人力代碼 -->
+                    <div class="d-flex align-center mb-1">
+                      <v-icon size="small" class="mr-1">mdi-wrench</v-icon>
+                      <span class="text-caption">代碼:</span>
+                      <span v-if="product.laborCode"
+                            class="font-weight-bold ml-1 text-body-2"
+                            :class="'text-' + getLaborCodeColor(product.laborCode)">
+                        {{ product.laborCode }}
+                      </span>
+                      <span v-else class="text-caption text-grey ml-1">無</span>
+                    </div>
+
+                    <!-- 操作人員（以品號區塊為單位） -->
+                    <div class="operator-drop-zone mt-1">
+                      <div
+                        v-if="product.operators && product.operators.length > 0"
+                        v-for="(operator, opIdx) in product.operators"
+                        :key="`op-${pIdx}-${opIdx}`"
+                        class="d-flex align-center mb-1"
+                      >
+                        <v-chip
+                          size="small"
+                          color="indigo"
+                          variant="elevated"
+                          class="draggable-chip"
+                          :draggable="true"
+                          @dragstart="onDragStart($event, operator, shift, machine.snkey, pIdx, opIdx)"
+                          @dragend="onDragEnd"
+                          @click.stop
+                        >
+                          {{ operator.name }}
+                        </v-chip>
+                        <v-chip
+                          v-if="operator.startTime || operator.endTime"
+                          size="x-small"
+                          color="teal"
+                          variant="tonal"
+                          class="ml-2"
+                        >
+                          <v-icon start size="x-small">mdi-clock-outline</v-icon>
+                          {{ getOperatorTimeFromOperator(operator) }}
+                        </v-chip>
+                      </div>
+                      <span
+                        v-else
+                        class="text-caption text-grey"
+                      >
+                        未分配
+                      </span>
+                    </div>
+
+                    <!-- 狀態（使用新格式 product.status） -->
+                    <v-chip v-if="shouldShowStatus(product.status)"
+                            size="x-small"
+                            :color="getStatusColor(product.status)"
+                            variant="tonal" class="mt-1">
+                      {{ product.status }}
+                    </v-chip>
+
+                    <!-- 備註，套用與列表相同的顏色規則 -->
+                    <div v-if="product.remark" class="text-caption mt-1"
+                         :class="
+                           product.remark.includes('手1-空白預設值')
+                             ? 'text-red'
+                             : product.remark.includes('自12')
+                               ? 'text-blue'
+                               : 'text-grey'
+                         ">
+                      {{ product.remark }}
+                    </div>
+
+                    <v-divider v-if="pIdx < getScheduleDataNew(shift, machine.snkey).products.length - 1"
+                               class="my-2" :thickness="1" color="primary" opacity="0.2" />
                   </div>
                 </div>
-                <div v-else class="text-center text-grey-lighten-1 empty-drop-zone"
-                  @dragover.prevent="onDragOver($event)"
-                  @dragleave="onDragLeave($event)"
-                  @drop="onDrop($event, shift, machine.snkey)">
+                <div
+                  v-else
+                  class="text-center text-grey-lighten-1 empty-drop-zone"
+                  @dragover.prevent="onEmptyCellDragOver($event)"
+                  @dragleave="onEmptyCellDragLeave($event)"
+                  @drop="onEmptyCellDrop($event, shift, machine.snkey)"
+                >
                   -
                 </div>
               </td>
@@ -98,31 +181,67 @@
       </v-card-text>
     </v-card>
 
-    <!-- 複製/移動選擇對話框 -->
-    <v-dialog v-model="copyMoveDialog" max-width="400px" persistent>
+    <!-- 複製/移動/交換選擇對話框（與列表相同） -->
+    <v-dialog v-model="copyMoveDialog" max-width="500px" persistent>
       <v-card>
         <v-card-title class="dialog-title">
           <span>選擇操作方式</span>
         </v-card-title>
         <v-card-text class="pt-4">
           <div class="text-body-1 mb-4">
-            將 <strong>{{ pendingDropData?.name }}</strong> 從 <strong>{{ pendingDropData?.sourceShift }} - {{ pendingDropData?.sourceItem?.機台名稱 }}</strong> 
-            {{ pendingDropData?.action === 'copy' ? '複製' : '移動' }}到 <strong>{{ pendingDropData?.targetShift }} - {{ pendingDropData?.targetItem?.機台名稱 }}</strong>？
+            <template v-if="pendingDropData?.isSameMachine">
+              在 <strong class="text-primary">{{ pendingDropData?.sourceItem?.machineName }}</strong> 內操作
+              <strong class="text-primary">{{ pendingDropData?.operator?.name }}</strong>
+              <span class="text-caption text-grey">（{{ pendingDropData?.sourceShift }}班）</span>
+            </template>
+            <template v-else>
+              將 <strong class="text-primary">{{ pendingDropData?.operator?.name }}</strong>
+              從 <strong class="text-primary">{{ pendingDropData?.sourceItem?.machineName }}</strong>
+              <span class="text-caption text-grey">（{{ pendingDropData?.sourceShift }}班）</span>
+              到 <strong class="text-primary">{{ pendingDropData?.targetItem?.machineName }}</strong>
+              <span class="text-caption text-grey">（{{ pendingDropData?.targetShift }}班）</span>
+            </template>
           </div>
-          <v-radio-group v-model="dropAction" inline>
-            <v-radio label="複製（保留原位置）" value="copy" color="primary">
+          <v-radio-group v-model="dropAction">
+            <v-radio value="move" color="primary">
               <template #label>
-                <div>
-                  <div class="font-weight-bold">複製</div>
-                  <div class="text-caption text-grey">人員會同時存在於兩個機台</div>
+                <div class="operation-option">
+                  <div class="d-flex align-center">
+                    <v-icon color="primary" class="mr-2">mdi-arrow-right-bold</v-icon>
+                    <span class="font-weight-bold">移動</span>
+                  </div>
+                  <div class="text-caption text-grey ml-8">
+                    <template v-if="pendingDropData?.isSameMachine">人員從來源品號移除，加入目標品號</template>
+                    <template v-else>人員從來源機台移除，加入目標機台</template>
+                  </div>
                 </div>
               </template>
             </v-radio>
-            <v-radio label="移動（從原位置移除）" value="move" color="primary">
+            <v-radio value="copy" color="primary">
               <template #label>
-                <div>
-                  <div class="font-weight-bold">移動</div>
-                  <div class="text-caption text-grey">人員會從原機台移除</div>
+                <div class="operation-option">
+                  <div class="d-flex align-center">
+                    <v-icon color="success" class="mr-2">mdi-content-copy</v-icon>
+                    <span class="font-weight-bold">複製</span>
+                  </div>
+                  <div class="text-caption text-grey ml-8">
+                    <template v-if="pendingDropData?.isSameMachine">人員保留在來源品號，同時加入目標品號</template>
+                    <template v-else>人員同時存在於兩個機台</template>
+                  </div>
+                </div>
+              </template>
+            </v-radio>
+            <v-radio value="swap" color="warning">
+              <template #label>
+                <div class="operation-option">
+                  <div class="d-flex align-center">
+                    <v-icon color="warning" class="mr-2">mdi-swap-horizontal</v-icon>
+                    <span class="font-weight-bold">交換</span>
+                  </div>
+                  <div class="text-caption text-grey ml-8">
+                    <template v-if="pendingDropData?.isSameMachine">兩個品號的所有操作人員互相交換</template>
+                    <template v-else>兩個機台指定品號的所有操作人員互相交換</template>
+                  </div>
                 </div>
               </template>
             </v-radio>
@@ -149,13 +268,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, getCurrentInstance } from 'vue'
 import api from '@/assets/js/api.js'
 import { useStore } from '@/stores/useStore'
 import dayjs from 'dayjs'
 import { convertBatchToNew, convertNewToOld } from '@/utils/scheduleDataAdapter'
 import ScheduleEditDialog from './ScheduleEditDialog.vue'
 
+const { proxy } = getCurrentInstance()
 const store = useStore()
 
 // Props
@@ -220,9 +340,12 @@ const loadAllShifts = async () => {
         .filter(item => item.date === props.selectedDate)
       
       if (filtered.length > 0) {
-        // 先轉換為新格式（統一結構）
+        // 先轉換為新格式（統一結構），並保留每筆 snkey 供後續 POST 使用
         console.log('[OverviewView-loadAllShifts] 讀取到的資料:', filtered)
         const newFormatData = convertBatchToNew(filtered)
+        newFormatData.forEach((n, i) => {
+          if (filtered[i]?.snkey != null) n.snkey = filtered[i].snkey
+        })
         console.log('[OverviewView-loadAllShifts] 轉換為新格式後:', newFormatData)
         allScheduleNew.value = newFormatData
         // 再轉成舊格式供既有畫面 / 拖拉邏輯使用
@@ -283,19 +406,14 @@ const getStatusColor = (status) => {
   return colorMap[status] || 'grey'
 }
 
-// 取得操作人員時間顯示
-const getOperatorTime = (item, idx) => {
-  if (!item) return ''
-  if (item.操作人員時間 && item.操作人員時間[idx]) {
-    const time = item.操作人員時間[idx]
-    if (time.startTime && time.endTime) {
-      return `${time.startTime} - ${time.endTime}`
-    } else if (time.startTime) {
-      return `${time.startTime} -`
-    } else if (time.endTime) {
-      return `- ${time.endTime}`
-    }
-  }
+// 取得操作人員時間顯示（新格式：直接從 operator 物件）
+const getOperatorTimeFromOperator = (operator) => {
+  if (!operator) return ''
+  const startTime = operator.startTime
+  const endTime = operator.endTime
+  if (startTime && endTime) return `${startTime} - ${endTime}`
+  if (startTime) return `${startTime} -`
+  if (endTime) return `- ${endTime}`
   return ''
 }
 
@@ -338,9 +456,17 @@ const shouldShowStatus = (status) => {
   return !hiddenStatuses.includes(status)
 }
 
-// 拖拉方法
-const onDragStart = (event, name, shift, machineSnkey, idx) => {
-  dragData.value = { name, shift, machineSnkey, idx }
+// 拖拉方法（以品號區塊為單位）
+// 拖拉方法（與列表一致：以品號區塊為單位，存 sourceItem 引用）
+const onDragStart = (event, operator, shift, machineSnkey, productIdx, operatorIdx) => {
+  const sourceItem = getScheduleDataNew(shift, machineSnkey)
+  if (!sourceItem) return
+  dragData.value = {
+    operator,
+    sourceItem,
+    productIdx,
+    operatorIdx
+  }
   event.dataTransfer.effectAllowed = 'move'
   event.target.classList.add('dragging')
   isDragging.value = true
@@ -350,6 +476,7 @@ const onDragEnd = () => {
   isDragging.value = false
   dragData.value = null
   document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'))
+  document.querySelectorAll('.product-drag-over').forEach(el => el.classList.remove('product-drag-over'))
   document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'))
 }
 
@@ -362,235 +489,358 @@ const onRemoveZoneDragLeave = (event) => {
   event.currentTarget.classList.remove('remove-zone-active')
 }
 
+// 移除區域：與列表相同邏輯（從來源品號移除人員並 POST）
 const onRemoveZoneDrop = async (event) => {
   event.currentTarget.classList.remove('remove-zone-active')
   isDragging.value = false
-  
+
   if (!dragData.value) return
-  
-  const { name, shift, machineSnkey, idx } = dragData.value
-  
-  // 取得來源資料
-  const sourceData = getScheduleData(shift, machineSnkey)
-  
-  if (sourceData && sourceData.操作人員名稱) {
-    sourceData.操作人員名稱.splice(idx, 1)
-    if (sourceData.operatorSnkeys) {
-      sourceData.operatorSnkeys.splice(idx, 1)
-    }
-    // 更新狀態
-    if (sourceData.操作人員名稱.length === 0) {
-      sourceData.狀態 = '待排'
-    }
-    
-    // 透過 API 更新資料庫
-    if (sourceData.snkey) {
-      console.log('--- [總覽-移除人員] 開始更新 ---')
-      console.log('時段:', shift, ', 機台 snkey:', machineSnkey)
-      console.log('移除人員:', name)
-      try {
-        const payload = {
-          snkey: sourceData.snkey,
-          tablename: 'schedule',
-          datalist: JSON.stringify({
-            ...sourceData,
-            editInfo: [...(sourceData.editInfo || []), {
-              name: store.state.pData?.username || 'system',
-              time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-              action: '移除人員'
-            }]
-          })
-        }
-        console.log('[總覽-移除人員] POST payload:', payload)
-        const rs = await api.post('schedule', payload)
-        console.log('[總覽-移除人員] POST 結果:', rs)
-        console.log('--- [總覽-移除人員] 更新完成 ---')
-      } catch (error) {
-        console.error('[總覽-移除人員] 更新失敗:', error)
-      }
-    }
-    
-    emit('update', sourceData)
+
+  const { operator, sourceItem, productIdx, operatorIdx } = dragData.value
+
+  if (!sourceItem?.products?.[productIdx]) {
+    dragData.value = null
+    return
   }
-  
+  const product = sourceItem.products[productIdx]
+  if (!product.operators || !Array.isArray(product.operators)) {
+    dragData.value = null
+    return
+  }
+
+  product.operators.splice(operatorIdx, 1)
+  if (product.operators.length === 0) {
+    product.status = '待排'
+  }
+
+  const sourceOld = convertNewToOld(sourceItem)
+  const idxOld = allScheduleData.value.findIndex(
+    r => r.machineSnkey === sourceOld.machineSnkey && r.shift === sourceOld.shift
+  )
+  if (idxOld !== -1) {
+    allScheduleData.value[idxOld] = sourceOld
+  }
+
+  // POST 須送新格式（完整 products），否則會覆蓋掉多品號
+  if (sourceItem.snkey) {
+    try {
+      const payload = {
+        snkey: sourceItem.snkey,
+        datalist: JSON.stringify({
+          ...sourceItem,
+          editInfo: [...(sourceItem.editInfo || []), {
+            name: store.state.pData?.username || 'system',
+            time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+            action: `移除人員 - ${product.productCode}`
+          }]
+        })
+      }
+      await api.post('schedule', payload)
+      proxy.$swal({
+        icon: 'success',
+        title: '移除成功',
+        text: `已從 ${sourceItem.machineName} 的品號 ${product.productCode} 中移除 ${operator.name}`
+      })
+    } catch (error) {
+      console.error('[總覽-移除人員] 更新失敗:', error)
+      proxy.$swal({ icon: 'error', title: '移除失敗', text: error.message || '未知錯誤' })
+    }
+  }
+
+  emit('update', sourceItem)
   dragData.value = null
 }
 
 
-const onDragOver = (event) => {
-  event.currentTarget.classList.add('drag-over')
+// 品號區塊拖放事件（以品號為單位）
+const onProductDragOver = (event) => {
+  event.currentTarget.classList.add('product-drag-over')
 }
 
-const onDragLeave = (event) => {
-  event.currentTarget.classList.remove('drag-over')
+const onProductDragLeave = (event) => {
+  event.currentTarget.classList.remove('product-drag-over')
 }
 
-const onDrop = async (event, targetShift, targetMachineSnkey) => {
-  event.currentTarget.classList.remove('drag-over')
-  
+// 品號區塊 drop：與列表相同（一律以區塊為單位，顯示選擇操作方式）
+const onProductDrop = (event, targetShift, targetMachineSnkey, targetProductIdx) => {
+  event.currentTarget.classList.remove('product-drag-over')
+
   if (!dragData.value) return
-  
-  const { name, shift: sourceShift, machineSnkey: sourceMachineSnkey, idx } = dragData.value
-  
-  // 不能拖到同一格
-  if (sourceShift === targetShift && sourceMachineSnkey === targetMachineSnkey) {
+
+  const { operator, sourceItem, productIdx: sourcePIdx, operatorIdx } = dragData.value
+  const targetItem = getScheduleDataNew(targetShift, targetMachineSnkey)
+
+  if (!sourceItem || !targetItem) {
     dragData.value = null
     return
   }
-  
-  // 取得來源和目標資料
-  const sourceData = getScheduleData(sourceShift, sourceMachineSnkey)
-  const targetData = getScheduleData(targetShift, targetMachineSnkey)
-  
-  if (!sourceData) {
+
+  // 不能拖到同一個品號區塊（同時段同機台同品號）
+  const isSameBlock =
+    sourceItem.shift === targetShift &&
+    sourceItem.machineSnkey === targetMachineSnkey &&
+    sourcePIdx === targetProductIdx
+  if (isSameBlock) {
     dragData.value = null
     return
   }
-  
-  // 目標已有此人員則跳過
-  if (targetData && targetData.操作人員名稱 && targetData.操作人員名稱.includes(name)) {
+
+  const sourceProduct = sourceItem.products?.[sourcePIdx]
+  const targetProduct = targetItem.products?.[targetProductIdx]
+  if (!sourceProduct || !targetProduct) {
     dragData.value = null
     return
   }
-  
-  // 保存拖放資訊，顯示選擇對話框
+
   pendingDropData.value = {
-    name,
-    sourceShift,
-    targetShift,
-    sourceMachineSnkey,
-    targetMachineSnkey,
-    sourceItem: sourceData ? { ...sourceData } : null,
-    targetItem: targetData ? { ...targetData } : null,
-    idx,
-    action: dropAction.value
+    operator,
+    sourceItem,
+    targetItem,
+    productIdx: sourcePIdx,
+    operatorIdx,
+    targetProductIdx,
+    isSameMachine: sourceItem.machineSnkey === targetMachineSnkey,
+    sourceShift: sourceItem.shift,
+    targetShift
   }
-  dropAction.value = 'move' // 預設為移動
+  dropAction.value = 'move'
   copyMoveDialog.value = true
 }
 
-// 確認拖放操作
+// 空白格拖放（只標記為拖入該機台，此時沒有既有排班紀錄，不處理實際更新）
+const onEmptyCellDragOver = (event) => {
+  event.currentTarget.classList.add('drag-over')
+}
+
+const onEmptyCellDragLeave = (event) => {
+  event.currentTarget.classList.remove('drag-over')
+}
+
+const onEmptyCellDrop = (event, targetShift, targetMachineSnkey) => {
+  event.currentTarget.classList.remove('drag-over')
+  // 目前總覽視圖僅支援對已存在品號的拖放，空白格不處理
+  dragData.value = null
+}
+
+// 確認拖放操作（與列表相同邏輯：區塊移動/複製/交換）
 const confirmDrop = async () => {
   if (!pendingDropData.value) {
     copyMoveDialog.value = false
     return
   }
-  
-  const { name, sourceShift, targetShift, sourceMachineSnkey, targetMachineSnkey, sourceItem: sourceItemData, targetItem: targetItemData, idx } = pendingDropData.value
+
+  const {
+    operator,
+    sourceItem,
+    targetItem,
+    productIdx,
+    operatorIdx,
+    targetProductIdx,
+    isSameMachine
+  } = pendingDropData.value
   const isCopy = dropAction.value === 'copy'
-  
-  // 取得實際的資料
-  const sourceData = getScheduleData(sourceShift, sourceMachineSnkey)
-  let targetData = getScheduleData(targetShift, targetMachineSnkey)
-  
-  if (!sourceData) {
+  const isSwap = dropAction.value === 'swap'
+
+  if (!sourceItem || !targetItem) {
+    copyMoveDialog.value = false
+    pendingDropData.value = null
+    dragData.value = null
+    return
+  }
+
+  const targetPIdx = targetProductIdx !== undefined ? targetProductIdx : 0
+  const sourceProduct = sourceItem.products?.[productIdx]
+  const targetProduct = targetItem.products?.[targetPIdx]
+
+  if (!sourceProduct || !targetProduct) {
     copyMoveDialog.value = false
     pendingDropData.value = null
     dragData.value = null
     return
   }
   
-  // 如果目標不存在，需要創建（但這種情況在總覽中應該不會發生，因為總覽顯示的是已存在的排班）
-  // 加到目標
-  if (targetData) {
-    if (!targetData.操作人員名稱) {
-      targetData.操作人員名稱 = []
+  // 交換邏輯：互換兩個品號下的所有人員
+  if (isSwap) {
+    const sourceOperators = Array.isArray(sourceProduct.operators) ? [...sourceProduct.operators] : []
+    const targetOperators = Array.isArray(targetProduct.operators) ? [...targetProduct.operators] : []
+
+    sourceProduct.operators = targetOperators
+    targetProduct.operators = sourceOperators
+
+    // 更新狀態
+    sourceProduct.status = sourceProduct.operators.length > 0 ? '已排' : '待排'
+    targetProduct.status = targetProduct.operators.length > 0 ? '已排' : '待排'
+
+    console.log('--- [總覽-交換人員-品號] 開始更新 ---')
+
+    // 更新來源（新格式 -> 舊格式）
+    const sourceOld = convertNewToOld(sourceItem)
+    const idxOldSrc = allScheduleData.value.findIndex(
+      r => r.machineSnkey === sourceOld.machineSnkey && r.shift === sourceOld.shift
+    )
+    if (idxOldSrc !== -1) {
+      allScheduleData.value[idxOldSrc] = sourceOld
     }
-    if (!targetData.operatorSnkeys) {
-      targetData.operatorSnkeys = []
-    }
-    targetData.操作人員名稱.push(name)
-    
-    // 如果是複製，需要找到操作人員的 snkey（總覽視圖中沒有 operators prop，需要從其他地方獲取）
-    if (isCopy) {
-      // 複製時，使用來源的 snkey（因為是同一個人）
-      const sourceSnkey = sourceData.operatorSnkeys ? sourceData.operatorSnkeys[idx] : null
-      if (sourceSnkey) {
-        targetData.operatorSnkeys.push(sourceSnkey)
-      }
-    } else {
-      // 移動：使用來源的 snkey
-      const sourceSnkey = sourceData.operatorSnkeys ? sourceData.operatorSnkeys[idx] : null
-      if (sourceSnkey) {
-        targetData.operatorSnkeys.push(sourceSnkey)
-      }
-      
-      // 從來源移除
-      sourceData.操作人員名稱.splice(idx, 1)
-      if (sourceData.operatorSnkeys) {
-        sourceData.operatorSnkeys.splice(idx, 1)
-      }
-      
-      // 更新來源狀態
-      if (sourceData.操作人員名稱.length === 0) {
-        sourceData.狀態 = '待排'
+
+    // POST 須送新格式（完整 products），否則會覆蓋掉多品號
+    if (sourceItem.snkey) {
+      try {
+        const payload = {
+          snkey: sourceItem.snkey,
+          datalist: JSON.stringify({
+            ...sourceItem,
+            editInfo: [...(sourceItem.editInfo || []), {
+              name: store.state.pData?.username || 'system',
+              time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+              action: '交換人員'
+            }]
+          })
+        }
+        console.log('[總覽-交換人員-品號] 來源 POST payload:', payload)
+        const rs = await api.post('schedule', payload)
+        console.log('[總覽-交換人員-品號] 來源 POST 結果:', rs)
+      } catch (error) {
+        console.error('[總覽-交換人員-品號] 更新來源失敗:', error)
       }
     }
-    
-    // 更新狀態：如果原本是待排、無可用人力或人力不足，加入人員後改為已排
-    if (targetData.狀態 === '待排' || targetData.狀態 === '無可用人力' || targetData.狀態 === '人力不足') {
-      targetData.狀態 = '已排'
+
+    // 更新目標（新格式 -> 舊格式，僅供 allScheduleData 同步）
+    const targetOld = convertNewToOld(targetItem)
+    const idxOldTgt = allScheduleData.value.findIndex(
+      r => r.machineSnkey === targetOld.machineSnkey && r.shift === targetOld.shift
+    )
+    if (idxOldTgt !== -1) {
+      allScheduleData.value[idxOldTgt] = targetOld
+    }
+
+    // POST 須送新格式（完整 products）
+    if (targetItem.snkey) {
+      try {
+        const payload = {
+          snkey: targetItem.snkey,
+          datalist: JSON.stringify({
+            ...targetItem,
+            editInfo: [...(targetItem.editInfo || []), {
+              name: store.state.pData?.username || 'system',
+              time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+              action: '交換人員'
+            }]
+          })
+        }
+        console.log('[總覽-交換人員-品號] 目標 POST payload:', payload)
+        const rs = await api.post('schedule', payload)
+        console.log('[總覽-交換人員-品號] 目標 POST 結果:', rs)
+      } catch (error) {
+        console.error('[總覽-交換人員-品號] 更新目標失敗:', error)
+      }
+    }
+
+    console.log('--- [總覽-交換人員-品號] 更新完成 ---')
+
+    emit('update', { source: sourceItem, target: targetItem })
+
+    copyMoveDialog.value = false
+    pendingDropData.value = null
+    dragData.value = null
+    return
+  }
+
+  // 一般移動 / 複製：與列表相同（以品號區塊為單位）
+  if (!targetProduct.operators) {
+    targetProduct.operators = []
+  }
+  const newOperator = {
+    snkey: operator.snkey,
+    name: operator.name,
+    startTime: operator.startTime || '',
+    endTime: operator.endTime || ''
+  }
+  const alreadyInTarget = targetProduct.operators.some(op => op.snkey === operator.snkey)
+  if (!alreadyInTarget) {
+    targetProduct.operators.push(newOperator)
+  }
+  if (
+    targetProduct.status === '待排' ||
+    targetProduct.status === '無可用人力' ||
+    targetProduct.status === '人力不足'
+  ) {
+    targetProduct.status = '已排'
+  }
+  if (!isCopy && sourceProduct.operators && sourceProduct.operators[operatorIdx]) {
+    sourceProduct.operators.splice(operatorIdx, 1)
+    if (sourceProduct.operators.length === 0) {
+      sourceProduct.status = '待排'
     }
   }
-  
-  // 透過 API 更新資料
-  console.log(`--- [總覽-機台間拖拉-${isCopy ? '複製' : '移動'}] 開始更新 ---`)
-  console.log('來源時段:', sourceShift, ', 來源機台 snkey:', sourceMachineSnkey)
-  console.log('目標時段:', targetShift, ', 目標機台 snkey:', targetMachineSnkey)
-  console.log(`${isCopy ? '複製' : '移動'}人員:`, name)
-  
-  // 如果是移動，更新來源資料
-  if (!isCopy && sourceData.snkey) {
-    console.log('[總覽-來源] 準備 POST...')
-    try {
-      const payload = {
-        snkey: sourceData.snkey,
-        datalist: JSON.stringify({
-          ...sourceData,
-          editInfo: [...(sourceData.editInfo || []), {
-            name: store.state.pData?.username || 'system',
-            time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-            action: '移出人員'
-          }]
-        })
+
+  // 來源：同步 allScheduleData（舊格式），POST 須送新格式以保留多品號
+  if (!isCopy) {
+    const sourceOld = convertNewToOld(sourceItem)
+    const idxOldSrc = allScheduleData.value.findIndex(
+      r => r.machineSnkey === sourceOld.machineSnkey && r.shift === sourceOld.shift
+    )
+    if (idxOldSrc !== -1) {
+      allScheduleData.value[idxOldSrc] = sourceOld
+    }
+
+    if (sourceItem.snkey) {
+      try {
+        const payload = {
+          snkey: sourceItem.snkey,
+          datalist: JSON.stringify({
+            ...sourceItem,
+            editInfo: [...(sourceItem.editInfo || []), {
+              name: store.state.pData?.username || 'system',
+              time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+              action: '移出人員'
+            }]
+          })
+        }
+        console.log('[總覽-品號間拖拉] 來源 POST payload:', payload)
+        const rs = await api.post('schedule', payload)
+        console.log('[總覽-品號間拖拉] 來源 POST 結果:', rs)
+      } catch (error) {
+        console.error('[總覽-品號間拖拉] 更新來源失敗:', error)
       }
-      console.log('[總覽-來源] POST payload:', payload)
-      const rs = await api.post('schedule', payload)
-      console.log('[總覽-來源] POST 結果:', rs)
-    } catch (error) {
-      console.error('[總覽-來源] 更新失敗:', error)
     }
   }
-  
-  // 更新目標資料
-  if (targetData && targetData.snkey) {
-    console.log('[總覽-目標] 準備 POST...')
+
+  // 目標：同步 allScheduleData，POST 須送新格式以保留多品號
+  const targetOld = convertNewToOld(targetItem)
+  const idxOldTgt = allScheduleData.value.findIndex(
+    r => r.machineSnkey === targetOld.machineSnkey && r.shift === targetOld.shift
+  )
+  if (idxOldTgt !== -1) {
+    allScheduleData.value[idxOldTgt] = targetOld
+  }
+
+  if (targetItem.snkey) {
     try {
       const payload = {
-        snkey: targetData.snkey,
+        snkey: targetItem.snkey,
         datalist: JSON.stringify({
-          ...targetData,
-          editInfo: [...(targetData.editInfo || []), {
+          ...targetItem,
+          editInfo: [...(targetItem.editInfo || []), {
             name: store.state.pData?.username || 'system',
             time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
             action: isCopy ? '複製人員' : '新增人員'
           }]
         })
       }
-      console.log('[總覽-目標] POST payload:', payload)
+      console.log('[總覽-品號間拖拉] 目標 POST payload:', payload)
       const rs = await api.post('schedule', payload)
-      console.log('[總覽-目標] POST 結果:', rs)
+      console.log('[總覽-品號間拖拉] 目標 POST 結果:', rs)
     } catch (error) {
-      console.error('[總覽-目標] 更新失敗:', error)
+      console.error('[總覽-品號間拖拉] 更新目標失敗:', error)
     }
   }
-  console.log(`--- [總覽-機台間拖拉-${isCopy ? '複製' : '移動'}] 更新完成 ---`)
+  console.log(`--- [總覽-品號間拖拉-${isCopy ? '複製' : '移動'}] 更新完成 ---`)
   
   // 發送更新事件
   if (!isCopy) {
-    emit('update', { source: sourceData, target: targetData })
+    emit('update', { source: sourceItem, target: targetItem })
   } else {
-    emit('update', { source: null, target: targetData })
+    emit('update', { source: null, target: targetItem })
   }
   
   // 重置
@@ -711,6 +961,51 @@ defineExpose({
   min-width: 100px;
 }
 
+// 品號區塊樣式（參照列表視圖）
+.product-section {
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+
+  // 品號區域可拖放樣式
+  &.product-drop-zone {
+    cursor: pointer;
+    position: relative;
+
+    &:hover {
+      background: rgba(63, 81, 181, 0.05);
+      border-color: rgba(63, 81, 181, 0.2);
+    }
+
+    // 拖拉經過時的樣式（與列表一致）
+    &.product-drag-over {
+      background: rgba(63, 81, 181, 0.15) !important;
+      border: 2px dashed #3f51b5 !important;
+      box-shadow: 0 0 12px rgba(63, 81, 181, 0.3);
+      transform: scale(1.02);
+
+      &::after {
+        content: '放開以加入此品號';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(63, 81, 181, 0.95);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+    }
+  }
+}
+
 .shift-row--早 {
   background-color: rgba(3, 169, 244, 0.03);
 }
@@ -800,6 +1095,11 @@ defineExpose({
 .fade-leave-to {
   opacity: 0;
   transform: translateX(-50%) translateY(-20px);
+}
+
+.operation-option {
+  padding: 8px 0;
+  width: 100%;
 }
 
 .dialog-title {

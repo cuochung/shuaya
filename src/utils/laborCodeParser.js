@@ -18,6 +18,15 @@ export function parseLaborCode(code) {
 
   const trimmedCode = code.trim()
 
+  // 手1+1: 2人操作1機台（客製規則）
+  if (trimmedCode.includes('手1+1')) {
+    return {
+      type: 'manual',
+      count: 2,
+      machines: 1
+    }
+  }
+
   // 手3: 3人操作1機台 (先檢查手3，避免被手1匹配)
   if (trimmedCode.includes('手3')) {
     return {

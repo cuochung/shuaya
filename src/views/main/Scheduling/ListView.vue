@@ -109,7 +109,18 @@
                       <!-- 備註 -->
                       <div v-if="product.remark" class="mt-2">
                         <v-icon size="default" class="mr-2">mdi-note-text</v-icon>
-                        <span class="text-body-2 text-grey">{{ product.remark }}</span>
+                        <span
+                          class="text-body-2"
+                          :class="
+                            product.remark.includes('手1-空白預設值')
+                              ? 'text-red'
+                              : product.remark.includes('自12')
+                                ? 'text-blue'
+                                : 'text-grey'
+                          "
+                        >
+                          {{ product.remark }}
+                        </span>
                       </div>
                     </div>
 
@@ -722,11 +733,7 @@ const onProductDrop = async (event, targetItem, productIdx) => {
     )
     
     if (hasOperator) {
-      proxy.$swal({ 
-        icon: "warning", 
-        title: "無法操作", 
-        text: `${name} 已存在於此機台中`
-      })
+      // 已存在於目標機台中時，不再顯示警告，直接不處理
       return
     }
     
@@ -747,24 +754,7 @@ const onProductDrop = async (event, targetItem, productIdx) => {
     return
   }
   
-  // 如果是不同機台，檢查目標機台是否已有此人員
-  if (sourceItem.machineSnkey !== targetItem.machineSnkey) {
-    const operatorName = operator.name
-    const hasOperator = targetItem.products?.some(p => 
-      p.operators?.some(op => op.name === operatorName)
-    )
-    
-    if (hasOperator) {
-      proxy.$swal({ 
-        icon: "warning", 
-        title: "無法操作", 
-        text: `${operatorName} 已存在於目標機台中`
-      })
-      dragData.value = null
-      return
-    }
-  }
-  
+  // 一律以區塊為單位：不論目標機台其他品號是否已有此人，都顯示選擇操作方式
   // 保存拖放資訊，顯示選擇對話框（移動或複製）
   pendingDropData.value = {
     operator,
@@ -794,11 +784,7 @@ const onDrop = async (event, targetItem) => {
     )
     
     if (hasOperator) {
-      proxy.$swal({ 
-        icon: "warning", 
-        title: "無法操作", 
-        text: `${name} 已存在於此機台中`
-      })
+      // 已存在於目標機台中時，不再顯示警告，直接不處理
       return
     }
     
@@ -848,11 +834,7 @@ const onDrop = async (event, targetItem) => {
   )
   
   if (hasOperator) {
-    proxy.$swal({ 
-      icon: "warning", 
-      title: "無法操作", 
-      text: `${operatorName} 已存在於目標機台中`
-    })
+    // 已存在於目標機台中時，不再顯示警告，直接不處理
     dragData.value = null
     return
   }
@@ -922,14 +904,18 @@ const confirmDrop = async () => {
       startTime: operator.startTime || '',
       endTime: operator.endTime || ''
     }
-    targetProduct.operators.push(newOperator)
+    // 區塊移動：目標區塊若已有同一人（同 snkey）則不重複加入
+    const alreadyInTarget = targetProduct.operators.some(op => op.snkey === operator.snkey)
+    if (!alreadyInTarget) {
+      targetProduct.operators.push(newOperator)
+    }
     
     // 更新目標品號狀態
     if (targetProduct.status === '待排' || targetProduct.status === '無可用人力' || targetProduct.status === '人力不足') {
       targetProduct.status = '已排'
     }
     
-    // 如果是移動（非複製），從來源移除
+    // 如果是移動（非複製），從來源區塊移除
     if (!isCopy) {
       const sourceProduct = sourceItem.products[productIdx]
       if (sourceProduct && sourceProduct.operators) {

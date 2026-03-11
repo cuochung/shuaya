@@ -78,17 +78,21 @@ export async function generateSchedule(date, shift, machines, operators, product
     }
 
     // 取得人力代碼 (優先使用已設定的，否則從品號資料庫查詢；使用英文欄位)
+    // 若最終仍為空白，則套用預設值「手1」，並在備註中加入「手1-空白預設值」
     let laborCode = inputLaborCode
     if (!laborCode) {
       const productCodeData = productCodes.find(pc => pc.productCode === inputProductCode)
-      if (!productCodeData || !productCodeData.laborCodes || productCodeData.laborCodes.length === 0) {
-        productItem.status = '無人力代碼'
-        scheduleResult.products.push(productItem)
-        scheduleResults.push(scheduleResult)
-        continue
+      if (productCodeData && productCodeData.laborCodes && productCodeData.laborCodes.length > 0) {
+        laborCode = productCodeData.laborCodes[0]
+        productItem.laborCode = laborCode
+      } else {
+        // 人力代碼欄位為空白時的預設值
+        laborCode = '手1'
+        productItem.laborCode = laborCode
+        productItem.remark = inputRemark
+          ? `${inputRemark} | 手1-空白預設值`
+          : '手1-空白預設值'
       }
-      laborCode = productCodeData.laborCodes[0]
-      productItem.laborCode = laborCode
     }
 
     // 解析人力代碼，取得需要的人數
